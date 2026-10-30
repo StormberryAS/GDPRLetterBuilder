@@ -18,9 +18,10 @@
 //     Bokmål letter, the edit and rebuild flow (an edited letter keeps its subject, language and
 //     file name), Clear;
 //   * the warnings, tied to their fields;
-//   * the outputs, through the recording stand-ins of tests/share-stub.ts: Copy, Open email app
-//     with and without the body, Print (and print emulation shows only the letter), Share shown only
-//     where the browser has it, Copy refused;
+//   * the outputs, through the recording stand-ins of tests/share-stub.ts: Copy, Send using email
+//     app (To, Cc, subject and the whole letter, no copy), Save as PDF (and print emulation shows
+//     only the letter, with no page margin and its own padding), Share shown only where the browser
+//     has it, Copy refused;
 //   * the deadline, the postal estimate (a receipt date typed by hand wins) and the other-country note;
 //   * the privacy page and the disclaimer under the page's policy, in dark and light, at 1280 and 320.
 // Screenshots go to DIR. Exits 1 on any failure. The file name does not end in .test.ts, so
@@ -375,22 +376,37 @@ try {
     await sleep(100);
     st = await p.run(pageState);
     check('Copy letter puts the letter, as it stands, on the clipboard and says "Copied."', st.rec.clipboard.length === 1 && st.rec.clipboard[0] === st.letter && st.status === 'Copied.', st.status);
-    // Open email app: the whole letter is over the cap, so it copies and opens a draft without the body.
-    check('a whole letter is too long for a mailto: link, and the button says so', st.emailLabel === 'Copy letter and open email app', st.emailLabel);
+    // Send using email app: one label, whatever the length; a draft with To, Cc, the subject and the whole letter, and nothing copied.
+    check('the email button says "Send using email app" for a whole letter', st.emailLabel === 'Send using email app', st.emailLabel);
     await p.click('#open-email');
     await sleep(100);
     st = await p.run(pageState);
     const link = st.rec.links.at(-1) || '';
-    check('Copy letter and open email app: the letter on the clipboard, a draft to the privacy email with the subject, no body, and the paste hint',
-      st.rec.clipboard.length === 2 && link === `mailto:personvern@eksempel-handel.example?subject=${encodeURIComponent('Request for access to my personal data (GDPR Article 15)')}` && st.status === 'Copied. Paste the letter into the message.', { link, status: st.status });
-    // An edited, short letter fits: the body goes in.
-    await p.type('#letter', 'Short test letter, æøå.');
-    st = await p.run(pageState);
-    check('editing the letter: the notice shows, and a short letter fits in the link', st.edited && st.emailLabel === 'Open email app', { edited: st.edited, label: st.emailLabel });
+    const SUBJECT = encodeURIComponent('Request for access to my personal data (GDPR Article 15)');
+    check('Send using email app: a draft to the privacy email, Cc the person\'s own address, the subject and the whole letter, nothing copied',
+      st.rec.clipboard.length === 1 && link === `mailto:personvern@eksempel-handel.example?cc=kari.nordmann@example.no&subject=${SUBJECT}&body=${encodeURIComponent(st.letter.replace(/\n/g, '\r\n'))}`
+      && link.length > 1800 && st.status === 'Your email app should open a draft. Check that the whole letter is in it before you press Send.', { link: link.slice(0, 200), status: st.status, clip: st.rec.clipboard.length });
+    check('the hint under the buttons says the draft has the letter and the Cc, and that nothing is sent',
+      (await p.run(() => document.getElementById('email-note')!.textContent)) === 'Your email app opens a draft with the letter, and your own email address as Cc if you gave one. Nothing is sent until you press Send there.');
+    // No valid address of the person's own: no Cc.
+    await p.type('#email', 'not an address');
     await p.click('#open-email');
     await sleep(100);
     st = await p.run(pageState);
-    check('Open email app with a short letter: the body goes in, encoded', (st.rec.links.at(-1) || '').endsWith(`&body=${encodeURIComponent('Short test letter, æøå.')}`), st.rec.links.at(-1));
+    check('an email address of the person\'s own that is not an address gives no Cc', (st.rec.links.at(-1) || '').startsWith(`mailto:personvern@eksempel-handel.example?subject=${SUBJECT}&body=`), (st.rec.links.at(-1) || '').slice(0, 120));
+    check('and step 3 warns that it is left out of Cc, tied to its field', st.warnings.some((w) => w.id === 'email-warn' && w.text === 'Warning: This does not look like an email address, so Send using email app will leave it out of Cc.')
+      && (await p.run(() => document.getElementById('email')!.getAttribute('aria-describedby')))!.split(' ').includes('email-warn'), st.warnings);
+    await p.type('#email', A.email);
+    st = await p.run(pageState);
+    check('a valid own address: the warning goes', !st.warnings.some((w) => w.id === 'email-warn'), st.warnings);
+    // An edited, short letter: the label stays, the body is the edited letter.
+    await p.type('#letter', 'Short test letter, æøå.');
+    st = await p.run(pageState);
+    check('editing the letter: the notice shows, and the label stays', st.edited && st.emailLabel === 'Send using email app', { edited: st.edited, label: st.emailLabel });
+    await p.click('#open-email');
+    await sleep(100);
+    st = await p.run(pageState);
+    check('Send using email app with an edited letter: the body is the letter as it stands, encoded', (st.rec.links.at(-1) || '').endsWith(`&body=${encodeURIComponent('Short test letter, æøå.')}`), st.rec.links.at(-1));
     // Edited: the form no longer changes it; Rebuild asks first.
     await p.type('#company', 'Another Company AS');
     st = await p.run(pageState);
@@ -407,7 +423,7 @@ try {
     st = await p.run(pageState);
     check('after an edit, a change of language and kind leaves the letter\'s subject, language tag and file name alone',
       st.letter === 'Short test letter, æøå.' && st.letterLang === 'en-GB'
-      && (st.rec.links.at(-1) || '').startsWith(`mailto:personvern@eksempel-handel.example?subject=${encodeURIComponent('Request for access to my personal data (GDPR Article 15)')}&body=`)
+      && (st.rec.links.at(-1) || '').startsWith(`mailto:personvern@eksempel-handel.example?cc=kari.nordmann@example.no&subject=${encodeURIComponent('Request for access to my personal data (GDPR Article 15)')}&body=`)
       && st.rec.downloads.at(-1) === `access-request-${date}.txt`, { lang: st.letterLang, link: st.rec.links.at(-1), file: st.rec.downloads.at(-1) });
     await p.click('#lang-en');
     await p.click('#kind-access');
@@ -427,11 +443,31 @@ try {
     await p.click('#print');
     await sleep(50);
     st = await p.run(pageState);
-    check('Print or save as PDF: the print view gets the letter as it stands, in its language', st.rec.prints === 1 && st.printText === st.letter && st.printLang === 'en-GB', { prints: st.rec.prints });
+    check('Save as PDF: the print view gets the letter as it stands, in its language, and the line says to choose Save as PDF', st.rec.prints === 1 && st.printText === st.letter && st.printLang === 'en-GB' && st.status === 'In the print window, choose to save as PDF instead of a printer.', { prints: st.rec.prints, status: st.status });
+    check('the three PDF buttons say "Save as PDF"', J(await p.run(() => ['print', 'fu-print', 'tl-print'].map((id) => document.getElementById(id)!.textContent))) === J(['Save as PDF', 'Save as PDF', 'Save as PDF']));
     await p.s('Emulation.setEmulatedMedia', { media: 'print' });
     await sleep(200);
-    const pr = await p.run(() => ({ shown: [...document.body.children].filter((e) => getComputedStyle(e).display !== 'none').map((e) => e.id || e.tagName), bg: getComputedStyle(document.body).backgroundColor, color: getComputedStyle(document.getElementById('print-letter')!).color, ws: getComputedStyle(document.getElementById('print-letter')!).whiteSpace }));
-    check('print: only the letter is printed, black on white, line breaks kept', J(pr.shown) === J(['print-letter']) && pr.bg === 'rgb(255, 255, 255)' && pr.color === 'rgb(0, 0, 0)' && pr.ws === 'pre-wrap', pr);
+    const pr = await p.run(() => {
+      const box = getComputedStyle(document.getElementById('print-letter')!);
+      return { shown: [...document.body.children].filter((e) => getComputedStyle(e).display !== 'none').map((e) => e.id || e.tagName), bg: getComputedStyle(document.body).backgroundColor, color: box.color, ws: box.whiteSpace,
+        pad: [box.paddingTop, box.paddingRight, box.paddingBottom, box.paddingLeft].map((x) => Math.round(parseFloat(x) * 25.4 / 96)), clone: box.getPropertyValue('box-decoration-break') || box.getPropertyValue('-webkit-box-decoration-break') };
+    });
+    check('print: only the letter is printed, black on white, line breaks kept, 20 mm sides and top and 22 mm bottom as padding repeated on every page',
+      J(pr.shown) === J(['print-letter']) && pr.bg === 'rgb(255, 255, 255)' && pr.color === 'rgb(0, 0, 0)' && pr.ws === 'pre-wrap' && J(pr.pad) === J([20, 20, 22, 20]) && pr.clone === 'clone', pr);
+    // The WebKit fallback (Safari and iOS clone padding only on inline boxes): a @supports branch that
+    // puts the 20 and 22 mm back on the page and takes the padding away. It is parsed, and it does
+    // not apply in Chromium.
+    const fb = await p.run(() => {
+      const sheet = [...document.styleSheets].find((x) => (x.href || '').includes('style.css'))!;
+      const media = [...sheet.cssRules].filter((r) => r instanceof CSSMediaRule && r.conditionText === 'print') as CSSMediaRule[];
+      const sup = media.flatMap((m) => [...m.cssRules]).find((r) => r instanceof CSSSupportsRule) as CSSSupportsRule | undefined;
+      const inner = sup ? [...sup.cssRules] : [];
+      const page = inner.find((r) => r instanceof CSSPageRule) as CSSPageRule | undefined;
+      const pad = inner.find((r) => r instanceof CSSStyleRule && r.selectorText === '.print-letter') as CSSStyleRule | undefined;
+      return { cond: sup?.conditionText, applies: sup ? CSS.supports(sup.conditionText) : null, margin: page?.style.getPropertyValue('margin'), padding: pad?.style.getPropertyValue('padding') };
+    });
+    check('print: the WebKit fallback branch is there (page margin 20 mm 20 mm 22 mm, no padding) and does not apply in Chromium',
+      fb.cond === '(not (box-decoration-break: clone)) or (font: -apple-system-body)' && fb.applies === false && fb.margin === '20mm 20mm 22mm' && fb.padding === '0px', fb);
     await p.viewShot(join(SHOTS, 'print-emulation.png'));
     await p.s('Emulation.setEmulatedMedia', { media: '' });
 
@@ -531,9 +567,10 @@ try {
     await sleep(100);
     let st = await p.run(pageState);
     f = await p.run(fuState);
-    check('reminder by email: a draft to the privacy email with the reminder subject, and the reminder to attach the first letter',
-      (st.rec.links.at(-1) || '').startsWith(`mailto:personvern@eksempel-handel.example?subject=${encodeURIComponent('Reminder: request for access to my personal data (GDPR Article 15)')}`)
-      && f.status.includes('Remember to attach your first letter.'), { link: st.rec.links.at(-1), status: f.status });
+    check('reminder by email: "Send using email app", a draft to the privacy email, Cc the person, the reminder subject and the whole reminder, and the reminder to attach the first letter',
+      f.emailLabel === 'Send using email app'
+      && (st.rec.links.at(-1) || '') === `mailto:personvern@eksempel-handel.example?cc=kari.nordmann@example.no&subject=${encodeURIComponent('Reminder: request for access to my personal data (GDPR Article 15)')}&body=${encodeURIComponent(f.letter.replace(/\n/g, '\r\n'))}`
+      && f.status === 'Your email app should open a draft. Check that the whole letter is in it before you press Send. Remember to attach your first letter.', { link: (st.rec.links.at(-1) || '').slice(0, 200), status: f.status });
 
     // Not fully: the reply checker.
     await p.click('#fu-partial');
@@ -685,7 +722,8 @@ try {
     await p.click('#tl-print');
     await sleep(100);
     st = await p.run(pageState);
-    check('Save and Print the cover note: a neutral file name, the note in the print view', st.rec.downloads.at(-1) === `timeline-${TODAY}.txt` && st.printText === f.tl, { file: st.rec.downloads.at(-1) });
+    check('Save and Save as PDF of the cover note: a neutral file name, the note in the print view, the line says to choose Save as PDF', st.rec.downloads.at(-1) === `timeline-${TODAY}.txt` && st.printText === f.tl
+      && (await p.run(() => document.getElementById('tl-status')!.textContent)) === 'In the print window, choose to save as PDF instead of a printer.', { file: st.rec.downloads.at(-1), status: f.tlStatus });
     await p.shot(join(SHOTS, 'followup-and-timeline-1280.png'));
 
     // Rebuild when nothing is missing: focus goes to the note that says so (K2-4).
@@ -740,7 +778,7 @@ try {
         await sleep(150);
         const l = await p.run(legalState);
         const ok = l.scripts === 0 && l.styleElements === 0 && l.styleAttrs === 0 && l.sheetsLoaded >= 2 && l.sw <= l.vw + 1 && !l.gate && l.back === './'
-          && /Inter/.test(l.bodyFont!) && (path === 'disclaimer.html' || (l.csp === PAGE_CSP && l.updated === 'Last updated: 29 October 2026'));
+          && /Inter/.test(l.bodyFont!) && (path === 'disclaimer.html' || (l.csp === PAGE_CSP && l.updated === 'Last updated: 30 October 2026'));
         // The generated disclaimer page names no icon, so the browser asks for /favicon.ico, which
         // the site does not have (a 404, as on every Labs app's disclaimer page). Nothing else may fail.
         const errors = p.log.errors.filter((e) => !(/status of 404/.test(e) && path === 'disclaimer.html' && p.log.requests.some((r) => r.url.endsWith('/favicon.ico'))));

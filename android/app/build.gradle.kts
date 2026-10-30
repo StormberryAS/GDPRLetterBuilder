@@ -10,7 +10,8 @@ plugins {
 
 // Signing credentials never live in this repo. android/keystore.properties (gitignored)
 // names the key file, its type and the alias, and deliberately holds NO passwords: those
-// come from the RELEASE_STORE_PASSWORD and RELEASE_KEY_PASSWORD Gradle properties, which
+// come from the RELEASE_STORE_PASSWORD and RELEASE_KEY_PASSWORD Gradle properties (and, for
+// the Google Play bundle, PLAY_UPLOAD_STORE_PASSWORD and PLAY_UPLOAD_KEY_PASSWORD), which
 // Gradle also reads from ORG_GRADLE_PROJECT_* env vars (CI) and which a local build passes
 // as env vars read from the keyring. Missing credentials must not break assembleDebug, so
 // everything below is optional.
@@ -31,6 +32,61 @@ val releaseKeyAlias = signingValue("keyAlias", "RELEASE_KEY_ALIAS")
 val releaseKeyPassword = signingValue("keyPassword", "RELEASE_KEY_PASSWORD")
 val canSignRelease = releaseStoreFile != null && file(releaseStoreFile).exists() &&
     releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null
+
+// THE GOOGLE PLAY EDITION (StopScroll's switch of 29 October 2026, itself EclipseTracker's,
+// MoonApp's and SunApp's pattern; Marcos approved a Play edition of GDPRLetterBuilder on
+// 30 October 2026). Google Play is a SEPARATE package, deliberately: no.stormberry.gdprletterbuilder
+// stays the sovereign build (our key, our certificate, GitHub Releases and Zapstore), and
+// -PplayBuild=true builds no.stormberry.gdprletterbuilder.play instead, which Google re-signs with
+// an app signing key it holds. Two package names are two apps to Android: they install side by
+// side and neither can ever update the other, so nothing that happens on Play can reach a Zapstore
+// install. The Play edition has the SAME features as the sovereign one, the same bundled web files
+// and the same lack of permissions: only the application ID, the versionCode and the signing key
+// differ. No product flavours (a flavour-level signingConfig is overridden by the build type's,
+// and a flavour dimension renames every task and breaks the workflow's APK path and the Zapstore
+// pattern).
+val playBuild = when (providers.gradleProperty("playBuild").orNull?.lowercase()) {
+    null -> false
+    // A bare `-PplayBuild` arrives as an empty string. Treating that as false would hand back a
+    // sovereign artefact from a command that plainly meant Play.
+    "", "true", "1", "yes" -> true
+    "false", "0", "no" -> false
+    else -> error(
+        "-PplayBuild=${providers.gradleProperty("playBuild").orNull} is not a recognised " +
+            "value. Use -PplayBuild=true, or omit the property for the sovereign build.",
+    )
+}
+
+// The Play upload key is a separate key with a separate job: it proves who uploaded the bundle
+// and never reaches a device, so it must never be the release key. If it is ever compromised it
+// can be reset from the Play Console without touching a single install. The key is
+// ~/.android-keys/stormberry-gdprletterbuilder-play-upload.p12 (created 30 October 2026, PKCS12,
+// alias upload, certificate SHA-256 54ffe8db...35d0), its password in the keyring as
+// app=gdprletterbuilder-play-upload.
+val uploadStoreFile = signingValue("playUploadStoreFile", "PLAY_UPLOAD_STORE_FILE")
+val uploadStoreType = signingValue("playUploadStoreType", "PLAY_UPLOAD_STORE_TYPE")
+val uploadStorePassword = signingValue("playUploadStorePassword", "PLAY_UPLOAD_STORE_PASSWORD")
+val uploadKeyAlias = signingValue("playUploadKeyAlias", "PLAY_UPLOAD_KEY_ALIAS")
+val uploadKeyPassword = signingValue("playUploadKeyPassword", "PLAY_UPLOAD_KEY_PASSWORD")
+val canSignPlayUpload = uploadStoreFile != null && file(uploadStoreFile).exists() &&
+    uploadStorePassword != null && uploadKeyAlias != null && uploadKeyPassword != null
+
+// The two keys must be two different files. A Play upload config pointing at the release keystore
+// (or a byte-for-byte copy of it) would enrol the sovereign certificate in Play App Signing, which
+// cannot be undone. Refused before anything is built.
+if (releaseStoreFile != null && uploadStoreFile != null) {
+    val rel = file(releaseStoreFile)
+    val upl = file(uploadStoreFile)
+    if (rel.exists() && upl.exists() &&
+        (rel.canonicalFile == upl.canonicalFile || rel.readBytes().contentEquals(upl.readBytes()))
+    ) {
+        error(
+            "The Play upload keystore and the release keystore are the same key " +
+                "($uploadStoreFile). The release key signs the Zapstore APK only and must never " +
+                "reach Play; the upload key signs the Play bundle only.",
+        )
+    }
+}
 
 // SEC-6 (stage 4b): the release workflow builds the release APK UNSIGNED, in a job that never
 // sees the key or its passwords, and a separate job that runs no Gradle signs it with Google's
@@ -61,35 +117,75 @@ if (configurationCacheRequested && (releaseStorePassword != null || releaseKeyPa
             "--no-configuration-cache; otherwise Gradle would store them in its configuration cache.",
     )
 }
+if (configurationCacheRequested && (uploadStorePassword != null || uploadKeyPassword != null)) {
+    error(
+        "A Play upload password is set, so this build must run with --no-configuration-cache; " +
+            "otherwise Gradle would store it in its configuration cache.",
+    )
+}
 
 // Guards on the RESOLVED TASK GRAPH, not on the command line, because the command line lies:
 // `build`, `assemble` and Gradle's `bR` abbreviation reach a release artefact without
-// containing "bundleRelease" or "assembleRelease". packageRelease (APK) and signReleaseBundle
-// (AAB) are the two tasks that consume a signing config, so the checks belong on them.
-//
-// GDPRLetterBuilder ships APKs only (Zapstore first, AND-1); Google Play is out of scope, so
-// there is no Play build and no Play upload key. A release bundle
-// would carry this app's ID signed with the release key, and uploading it anywhere would
-// enrol the release certificate where it must never go, so bundles are refused outright. A
-// release task that would silently produce an UNSIGNED apk is refused too: an
-// app-release-unsigned.apk next to a signed one from an earlier run is exactly the kind of
-// mix-up that ends with the wrong file uploaded. The one exception is the explicit
-// -PunsignedRelease=true above, for CI (SEC-6): AGP then names the file
-// app-release-unsigned.apk, and only the signing job's apksigner makes it a release.
-tasks.matching { it.name == "packageRelease" || it.name == "signReleaseBundle" }.configureEach {
+// containing "bundleRelease" or "assembleRelease". The checks belong on the tasks that write a
+// release artefact with a signing config: signReleaseBundle (the AAB) and the four that write
+// release APKs. packageRelease writes the ordinary APK. packageReleaseUniversalApk,
+// makeApkFromBundleForRelease and extractApksForRelease make APKs FROM THE BUNDLE (one universal
+// APK, the .apks split set and a device's splits); they start from packageReleaseBundle, never
+// pass through signReleaseBundle, and sign with the build type's config, so they are APKs here.
+//   - A release BUNDLE is built only with -PplayBuild=true and a complete upload key. Without the
+//     flag it would carry the SOVEREIGN application ID signed with the release key; uploading it
+//     would permanently claim no.stormberry.gdprletterbuilder on Play and enrol the release
+//     certificate in Play App Signing, which cannot be undone.
+//   - A release APK with -PplayBuild=true is refused: Play takes the bundle, and an installable
+//     .play APK has no destination and must never be mistaken for the Zapstore one.
+//   - A sovereign release task that would silently produce an UNSIGNED apk is refused too: an
+//     app-release-unsigned.apk next to a signed one from an earlier run is exactly the kind of
+//     mix-up that ends with the wrong file uploaded. The one exception is the explicit
+//     -PunsignedRelease=true above, for CI (SEC-6): AGP then names the file
+//     app-release-unsigned.apk, and only the signing job's apksigner makes it a release.
+val releaseApkTasks = setOf(
+    "packageRelease",
+    "packageReleaseUniversalApk",
+    "makeApkFromBundleForRelease",
+    "extractApksForRelease",
+)
+tasks.matching { it.name in releaseApkTasks || it.name == "signReleaseBundle" }.configureEach {
     val isBundle = name == "signReleaseBundle"
     val signed = canSignRelease
     val unsigned = unsignedRelease
-    // An input, so dropping the switch reruns the task and the check below, instead of
-    // leaving the APK of an earlier unsigned build in place as "up to date".
+    val play = playBuild
+    val haveUploadKey = canSignPlayUpload
+    // Inputs, so changing a switch reruns the task and the checks below, instead of leaving the
+    // artefact of an earlier build in place as "up to date".
     inputs.property("unsignedRelease", unsigned)
+    inputs.property("playBuild", play)
     doFirst {
-        if (isBundle) {
+        if (isBundle && !play) {
             error(
-                "Refusing to build a release bundle. GDPRLetterBuilder ships APKs only (Zapstore " +
-                    "first); Google Play is not part of version 1, and a bundle signed with the " +
-                    "release key must never exist.",
+                "Refusing to build a release bundle without -PplayBuild=true. This AAB would carry " +
+                    "the sovereign application ID signed with the release key, and uploading it " +
+                    "would permanently claim that package on Play. The sovereign channel ships " +
+                    "APKs; Play takes the bundle, with -PplayBuild=true.",
             )
+        }
+        if (!isBundle && play) {
+            error(
+                "Refusing to build a release APK with -PplayBuild=true. Play takes the app bundle: " +
+                    "run :app:bundleRelease -PplayBuild=true. An installable .play APK has no " +
+                    "destination and must never be mistaken for the Zapstore one.",
+            )
+        }
+        if (isBundle) {
+            if (!haveUploadKey) {
+                error(
+                    "playBuild=true but the Play upload keystore is not fully configured. " +
+                        "playUploadStoreFile and playUploadKeyAlias (android/keystore.properties, or " +
+                        "PLAY_UPLOAD_STORE_FILE and PLAY_UPLOAD_KEY_ALIAS) and the passwords " +
+                        "PLAY_UPLOAD_STORE_PASSWORD and PLAY_UPLOAD_KEY_PASSWORD (from the keyring) " +
+                        "must all be set, and the store file must exist.",
+                )
+            }
+            return@doFirst
         }
         if (!signed && !unsigned) {
             error(
@@ -102,6 +198,17 @@ tasks.matching { it.name == "packageRelease" || it.name == "signReleaseBundle" }
     }
 }
 
+// The Play versionCode offset (see defaultConfig): 1000, as CheckLink, SunApp, MoonApp and
+// StopScroll, so the sovereign versionCode must stay below 1000.
+val PLAY_VERSION_CODE_OFFSET = 1000
+
+// Under -PplayBuild=true the artefact is named for what it is, so a Play bundle can never be
+// mistaken for a sovereign one on disk. Deliberately NOT set for the sovereign build, whose file
+// name app-release-unsigned.apk is hardcoded in .github/workflows/android-release.yml.
+if (playBuild) {
+    base { archivesName = "gdprletterbuilder-play" }
+}
+
 android {
     namespace = "no.stormberry.gdprletterbuilder"
     // compileSdk 37.1 because androidx core-ktx 1.19.0 requires compiling against API 37 or
@@ -110,16 +217,27 @@ android {
     compileSdkMinor = 1
 
     defaultConfig {
-        // Permanent from the first Zapstore release.
-        applicationId = "no.stormberry.gdprletterbuilder"
+        // Sovereign build: no.stormberry.gdprletterbuilder, permanent from the first Zapstore release.
+        // Google Play build (-PplayBuild=true): no.stormberry.gdprletterbuilder.play.
+        applicationId = if (playBuild) "no.stormberry.gdprletterbuilder.play" else "no.stormberry.gdprletterbuilder"
         minSdk = 24
         targetSdk = 36
         // 0.0.1 (code 1): the first Android build (stage 3, 16 October 2026): the web app
         // bundled byte for byte; Copy (marked sensitive), Share, Save through Android's save
         // screen, the calendar insert intent, printing through Android's print screen and the
         // email app through the page's mailto: link. No permissions at all. Not released yet.
+        //
+        // ONE VISIBLE VERSION, TWO CODE LINES. The sovereign versionCode and versionName on the
+        // next lines are the only numbers bumped by hand; Zapstore codes stay below 1000. The Play
+        // build derives its code from them and shows the same name: its versionCode is 1000 plus
+        // the sovereign one (0.0.1, code 1, becomes code 1001), its versionName the sovereign
+        // one. Every Play upload is built from a sovereign release tag that shipped on GitHub
+        // Releases.
         versionCode = 1
         versionName = "0.0.1"
+        if (playBuild) {
+            versionCode = PLAY_VERSION_CODE_OFFSET + versionCode!!
+        }
 
         // Density PNGs generated from vectors are a source of build nondeterminism, and the
         // app ships vector icons only.
@@ -143,6 +261,21 @@ android {
                 enableV4Signing = false
             }
         }
+        if (canSignPlayUpload) {
+            create("playUpload") {
+                storeFile = file(uploadStoreFile!!)
+                if (uploadStoreType != null) storeType = uploadStoreType
+                storePassword = uploadStorePassword
+                keyAlias = uploadKeyAlias
+                keyPassword = uploadKeyPassword
+                // v1 stays ON here (MoonApp's reason): an app bundle is signed like a JAR, and
+                // this signature exists only so Play can verify who uploaded it. Play strips it
+                // and re-signs the split APKs it generates with the app signing key it holds.
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
     }
 
     buildTypes {
@@ -154,9 +287,14 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Conditional so a clean checkout can still assembleDebug, and never in CI's
-            // unsigned build (SEC-6), which can hold no key in any case.
-            if (canSignRelease && !unsignedRelease) signingConfig = signingConfigs.getByName("release")
+            // The Play build never touches the release key and the sovereign build never touches
+            // the upload key. Both stay conditional, so a clean checkout with no keystore can still
+            // assembleDebug, and CI's unsigned build (SEC-6) can hold no key in any case.
+            if (playBuild) {
+                if (canSignPlayUpload) signingConfig = signingConfigs.getByName("playUpload")
+            } else if (canSignRelease && !unsignedRelease) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             // No META-INF/version-control-info.textproto. The gradle.properties switch alone
             // did not stop AGP writing it, and once AGP finds the repository it would carry
             // the commit hash, which differs per checkout.

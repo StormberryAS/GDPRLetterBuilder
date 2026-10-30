@@ -170,10 +170,10 @@ try {
   await p.click('#save-ics-ext');
   await sleep(1500);
   st = await p.run(pageState);
-  check('Copy, Open email app, Print and Share each handed over the letter once', st.rec.clipboard.length === 2 && st.rec.links.length === 1 && st.rec.prints === 1 && st.rec.share.length === 1, st.rec);
+  check('Copy, Send using email app, Save as PDF and Share each handed over the letter once (the email button copies nothing)', st.rec.clipboard.length === 1 && st.rec.links.length === 1 && st.rec.prints === 1 && st.rec.share.length === 1, st.rec);
   const link = st.rec.links[0];
-  check('the mailto: link: to the privacy email, the subject, no body (the letter is over 1,800 characters), nothing else',
-    link === `mailto:privacy@${M.toLowerCase()}.example?subject=${encodeURIComponent('Request for access to my personal data (GDPR Article 15)')}`, link);
+  check('the mailto: link: to the privacy email, Cc the person\'s own address, the subject and the whole letter, nothing else',
+    link === `mailto:privacy@${M.toLowerCase()}.example?cc=kari@${M.toLowerCase()}mail.example&subject=${encodeURIComponent('Request for access to my personal data (GDPR Article 15)')}&body=${encodeURIComponent(st.letter.replace(/\n/g, '\r\n'))}`, (link || '').slice(0, 200));
   // The saved files, byte for byte.
   const files = readdirSync(downloads);
   check('Save as text file and the two reminders saved three files, named neutrally', files.length === 3, files);

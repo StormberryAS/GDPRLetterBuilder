@@ -12,8 +12,8 @@
 //   * the letter builds from typed answers, and the Bokmål letter carries lang="nb";
 //   * Save a reminder and Save as text file write the files (Gecko saves blob downloads as Chromium
 //     does), and the reminder holds the company and the deadline and none of the person's details;
-//   * Open email app hands over the mailto: link and Print the letter (both to recording
-//     stand-ins, so nothing opens);
+//   * Send using email app hands over the mailto: link (To, Cc, subject, the whole letter) and
+//     Save as PDF prints the letter (both to recording stand-ins, so nothing opens);
 //   * no request after load, no policy violation;
 //   * the session-restore question of spec PRIV-3: does the browser write what was typed into its
 //     session-restore file (sessionstore-backups/recovery.jsonlz4), and does autocomplete="off" stop
@@ -227,8 +227,9 @@ try {
   await lw.press('#open-email');
   await lw.press('#print');
   const rec = await lw.run(() => window.__rec);
-  check(`${lw.version}: Open email app hands over the mailto: link, Print gets the letter`,
-    rec!.links.length === 1 && rec!.links[0]!.startsWith('mailto:personvern@eksempel-handel.example?subject=') && rec!.prints === 1 && (await lw.run(() => document.getElementById('print-letter')!.textContent)) === letter, rec);
+  check(`${lw.version}: Send using email app hands over the mailto: link with the Cc and the whole letter, Save as PDF gets the letter`,
+    rec!.links.length === 1 && rec!.links[0]!.startsWith('mailto:personvern@eksempel-handel.example?cc=kari.nordmann@example.no&subject=')
+    && rec!.links[0]!.endsWith(`&body=${encodeURIComponent(letter.replace(/\n/g, '\r\n'))}`) && rec!.prints === 1 && (await lw.run(() => document.getElementById('print-letter')!.textContent)) === letter, { links: rec!.links.map((l) => l.slice(0, 120)), prints: rec!.prints });
 
   await lw.run(() => { const t = document.getElementById('received'); t!.focus(); (t as HTMLInputElement).value = '2026-03-05'; t!.dispatchEvent(new Event('input', { bubbles: true })); return true; });
   await lw.press('#save-ics');

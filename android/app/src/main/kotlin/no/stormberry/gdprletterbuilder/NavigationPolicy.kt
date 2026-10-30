@@ -1,6 +1,10 @@
 package no.stormberry.gdprletterbuilder
 
+import java.io.ByteArrayOutputStream
 import java.net.URI
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
 
 /**
  * Decides what happens to every navigation and request the WebView makes. Pure Kotlin on
@@ -13,8 +17,8 @@ import java.net.URI
  *    Datatilsynet, which open in a new tab on the website, and the footer's links) opens in the
  *    user's browser; the WebView stays where it is.
  *  - mailto: and nostr: addresses go to whichever app on the device handles them, as they would
- *    from the website: mailto: is how Open email app hands over the draft (spec section 6), and
- *    nostr: is the footer's Nostr link. This is an allowlist of two schemes, APP_SCHEMES, not a
+ *    from the website: mailto: is how Send using email app hands over the draft (spec section 6,
+ *    read into its parts by mailDraft), and nostr: is the footer's Nostr link. This is an allowlist of two schemes, APP_SCHEMES, not a
  *    door for every scheme.
  *  - Everything else (javascript:, intent:, file:, content:, data:, blob:, market: and any
  *    address that does not parse cleanly) is refused, and so is an address with sign-in
@@ -94,6 +98,99 @@ object NavigationPolicy {
     fun isAssetOrigin(origin: String?): Boolean {
         val o = origin?.trimEnd('/') ?: return false
         return o == ASSET_ORIGIN || o == "$ASSET_ORIGIN:443"
+    }
+
+    /**
+     * The parts of an email draft, read from a mailto: link: one To address, one Cc address, the
+     * subject and the body, each null when the link has none. The body's line ends are \n.
+     */
+    data class MailDraft(val to: String?, val cc: String?, val subject: String?, val body: String?)
+
+    /** The only fields a mailto: link from the page carries (src/mailto.js, RFC 6068). */
+    private val MAIL_FIELDS = setOf("cc", "subject", "body")
+
+    /** What a single address never holds: a space or line break, a separator, brackets or quotes. */
+    private val NOT_IN_ADDRESS = Regex("[\\s,;:<>()\\[\\]\\\\\"\\p{Cntrl}]")
+
+    /**
+     * Send using email app (spec section 6, OUT-1): the page's mailto: link read into its parts, so
+     * the app can hand each one to the email app on its own (ACTION_SENDTO with EXTRA_EMAIL,
+     * EXTRA_CC, EXTRA_SUBJECT and EXTRA_TEXT). An email app then gets the whole letter even when
+     * it reads only part of a long link, or ignores the fields after the "?".
+     *
+     * Null, so nothing is handed over, for anything the page never makes: a link refused by
+     * decide(), a field other than cc, subject and body (to, bcc, in-reply-to or any header), a
+     * field given twice, a broken %-escape or invalid UTF-8, an address that is not exactly one
+     * address (a second one after a comma, a line break, angle brackets), and a subject with a
+     * line break or other control character. The links of the privacy page and the disclaimer
+     * (mailto:info@stormberry.as) read as a draft with only a recipient.
+     */
+    fun mailDraft(url: String?): MailDraft? {
+        if (decide(url) != Decision.EXTERNAL_APP) return null
+        val text = url!!.trim()
+        val colon = text.indexOf(':')
+        if (!text.substring(0, colon).equals("mailto", ignoreCase = true)) return null
+        val rest = text.substring(colon + 1)
+        if ('#' in rest) return null
+        val q = rest.indexOf('?')
+        val rawTo = if (q < 0) rest else rest.substring(0, q)
+        val to = if (rawTo.isEmpty()) null else (decode(rawTo)?.let { address(it) } ?: return null)
+        val fields = HashMap<String, String>()
+        if (q >= 0) {
+            for (pair in rest.substring(q + 1).split('&')) {
+                val eq = pair.indexOf('=')
+                if (eq <= 0) return null
+                val name = pair.substring(0, eq).lowercase()
+                if (name !in MAIL_FIELDS || name in fields) return null
+                fields[name] = decode(pair.substring(eq + 1)) ?: return null
+            }
+        }
+        val cc = fields["cc"]?.let { address(it) ?: return null }
+        val subject = fields["subject"]
+        if (subject != null && subject.any { it.isISOControl() }) return null
+        val body = fields["body"]?.replace("\r\n", "\n")?.replace('\r', '\n')
+        return MailDraft(to, cc, subject, body)
+    }
+
+    /** One plain address (one @, something on both sides, nothing that separates or adds a header), or null. */
+    private fun address(text: String): String? {
+        if (text.length > 254 || NOT_IN_ADDRESS.containsMatchIn(text)) return null
+        val at = text.indexOf('@')
+        if (at <= 0 || at != text.lastIndexOf('@') || at == text.length - 1) return null
+        return text
+    }
+
+    /**
+     * Strict %-decoding as UTF-8 (a "+" stays a "+": mailto: has no form encoding). The page encodes
+     * everything with encodeURIComponent, so a character outside printable ASCII is refused too.
+     */
+    private fun decode(text: String): String? {
+        val bytes = ByteArrayOutputStream(text.length)
+        var i = 0
+        while (i < text.length) {
+            val c = text[i]
+            if (c == '%') {
+                if (i + 2 >= text.length) return null
+                val hi = Character.digit(text[i + 1], 16)
+                val lo = Character.digit(text[i + 2], 16)
+                if (hi < 0 || lo < 0) return null
+                bytes.write(hi * 16 + lo)
+                i += 3
+            } else {
+                if (c.code < 0x21 || c.code > 0x7e) return null
+                bytes.write(c.code)
+                i += 1
+            }
+        }
+        return try {
+            Charsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(bytes.toByteArray()))
+                .toString()
+        } catch (_: CharacterCodingException) {
+            null
+        }
     }
 
     private fun parse(url: String?): URI? {

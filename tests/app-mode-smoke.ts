@@ -24,7 +24,11 @@
 //     cancelled save clears "Saved as", a failed one says so, a busy one leaves it (E3-4);
 //   * Add to calendar app sends calendar, never save, with the page's reminder, and the line under
 //     it says it is opening and then what the app answered; it is disabled with Save a reminder;
-//   * no email app: "Copied. Paste the letter into the message." becomes "Copied." (E3-7);
+//   * Save as PDF: the line under the buttons names the Android print screen, not the browser's
+//     print window, and is emptied when the print screen could not open;
+//   * Send using email app: the mailto: link (To, Cc, subject, the whole letter) reaches the app as
+//     a navigation, nothing is copied; no email app: the page's "should open a draft" line is
+//     emptied (E3-7);
 //   * a text over 100,000 characters is refused before anything is posted, with the approved line;
 //     a message over 450,000 characters is never posted (A3-5, E3-6, A3-6);
 //   * Back: with nothing typed the app is told to close; with something typed, or an edited
@@ -91,6 +95,7 @@ const BRIDGE_SRC = readFileSync(join(ROOT, 'android/web-overlay/android-bridge.j
 const W = (name: string): string => BRIDGE_SRC.match(new RegExp(`var ${name} = '([^']+)';`))![1]!;
 const TOO_LONG = W('TOO_LONG');
 const SAVE_FAILED = W('SAVE_FAILED');
+const PRINT_SCREEN = W('PRINT_SCREEN');
 const CLOSE_QUESTION = W('CLOSE_QUESTION');
 const CAL = { opening: W('CALENDAR_OPENING'), opened: W('CALENDAR_OPENED'), failed: W('CALENDAR_FAILED'), label: W('CALENDAR_LABEL') };
 
@@ -257,7 +262,7 @@ try {
     await p.viewShot(join(SHOTS, 'app-start.png'));
   }
 
-  // ---- Step 6: Copy, Share, Save, Print, Open email app
+  // ---- Step 6: Copy, Share, Save, Save as PDF, Send using email app
   {
     const p = await open('app');
     await fill(p);
@@ -293,14 +298,22 @@ try {
     await p.run(() => window.__gl.mode.save = 'ok');
 
     r = await press(p, '#print', 'out-status');
-    check('Print: the first letter goes to the app as print, kind letter', r.sent.length === 1 && r.sent[0]!.t === 'print' && r.sent[0]!.kind === 'letter' && r.sent[0]!.text === letter, r.sent.map((m) => [m.t, m.kind]));
+    check('Save as PDF: the first letter goes to the app as print, kind letter', r.sent.length === 1 && r.sent[0]!.t === 'print' && r.sent[0]!.kind === 'letter' && r.sent[0]!.text === letter, r.sent.map((m) => [m.t, m.kind]));
+    check('Save as PDF: the line names the Android print screen, and the announcer says it', r.status === PRINT_SCREEN && (await p.until(1000, (t: string) => document.getElementById('announcer')!.textContent === t, PRINT_SCREEN)), r);
+    await p.run(() => window.__gl.mode.print = 'fail');
+    r = await press(p, '#print', 'out-status');
+    check('Save as PDF, the print screen did not open: the line is emptied (the app says why)', r.sent.length === 1 && r.sent[0]!.t === 'print' && r.status === '', r.status);
+    await p.run(() => window.__gl.mode.print = 'ok');
 
-    // Open email app: the letter is longer than a mailto: link may carry, so it is copied first.
-    check('the letter is long enough for the copy-first email button', (await p.text('open-email')) === 'Copy letter and open email app');
+    // Send using email app: the whole letter goes in the mailto: link, with the Cc; nothing is copied.
+    check('the email button says "Send using email app"', (await p.text('open-email')) === 'Send using email app');
     r = await press(p, '#open-email', 'out-status');
-    check('Open email app: the letter is copied through the app, and the mailto: link opened', r.sent.length === 1 && r.sent[0]!.t === 'copy' && r.sent[0]!.text === letter && (await p.run(() => window.__gl.mailto.length)) === 1 && r.status === 'Copied. Paste the letter into the message.', r);
+    const mail = await p.run(() => window.__gl.mailto.at(-1) || '');
+    check('Send using email app: nothing posted, the mailto: link with To, Cc, subject and the whole letter opened', r.sent.length === 0 && (await p.run(() => window.__gl.mailto.length)) === 1
+      && mail === `mailto:personvern@eksempel-handel.example?cc=kari.nordmann@example.no&subject=${encodeURIComponent('Request for access to my personal data (GDPR Article 15)')}&body=${encodeURIComponent(letter.replace(/\n/g, '\r\n'))}`
+      && r.status === 'Your email app should open a draft. Check that the whole letter is in it before you press Send.', { r, mail: mail.slice(0, 160) });
     await p.run(() => window.__gl.send({ t: 'no-email-app' }));
-    check('no email app: the line says only "Copied." (E3-7)', await p.until(1000, () => document.getElementById('out-status')!.textContent === 'Copied.'), await p.text('out-status'));
+    check('no email app: the line is emptied (E3-7)', await p.until(1000, () => document.getElementById('out-status')!.textContent === ''), await p.text('out-status'));
 
     check('step 6 outputs: no request after load, none elsewhere, no download, no policy refusal, no error',
       p.log.requests.length === loaded && p.log.offsite.length === 0 && p.log.downloads.length === 0 && p.log.csp.length === 0 && (await p.run(() => window.__csp.length)) === 0 && p.log.errors.length === 0,
@@ -386,10 +399,13 @@ try {
     check('follow-up Print: print, kind follow-up, the follow-up\'s text', r.sent.length === 1 && r.sent[0]!.t === 'print' && r.sent[0]!.kind === 'follow-up' && r.sent[0]!.text === fu, r.sent.map((m) => m.kind));
     r = await press(p, '#print', 'out-status');
     check('then step 6\'s Print prints the first letter again', r.sent.length === 1 && r.sent[0]!.kind === 'letter' && r.sent[0]!.text === (await p.value('letter')));
-    check('the follow-up\'s email button is the copy-first one for this long letter', (await p.text('fu-email')) === 'Copy letter and open email app');
+    check('the follow-up\'s email button says "Send using email app"', (await p.text('fu-email')) === 'Send using email app');
     r = await press(p, '#fu-email', 'fu-status');
+    const fuMail = await p.run(() => window.__gl.mailto.at(-1) || '');
+    check('follow-up Send using email app: nothing posted, the whole follow-up in the link with the Cc', r.sent.length === 0 && fuMail.startsWith('mailto:personvern@eksempel-handel.example?cc=kari.nordmann@example.no&subject=')
+      && fuMail.endsWith(`&body=${encodeURIComponent(fu.replace(/\n/g, '\r\n'))}`) && r.status === 'Your email app should open a draft. Check that the whole letter is in it before you press Send.', { r, mail: fuMail.slice(0, 160) });
     await p.run(() => window.__gl.send({ t: 'no-email-app' }));
-    check('follow-up, no email app: its line says only "Copied." (E3-7)', r.sent[0] && r.sent[0].t === 'copy' && (await p.until(1000, () => document.getElementById('fu-status')!.textContent === 'Copied.')), await p.text('fu-status'));
+    check('follow-up, no email app: its line is emptied (E3-7)', await p.until(1000, () => document.getElementById('fu-status')!.textContent === ''), await p.text('fu-status'));
 
     await p.click('#tl-add');
     await p.setDate('#tl-date-1', '2026-09-01');

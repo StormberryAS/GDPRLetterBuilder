@@ -36,7 +36,10 @@
  *     3). Here it fires the page's beforeprint, so the page fills its print box (#print-letter)
  *     with the letter it means to print, as in a browser; hands that text to the app, which
  *     opens Android's print screen with it (LetterPrintAdapter.kt; Save as PDF is there too);
- *     then fires afterprint, so the page goes back to its default, as in a browser.
+ *     then fires afterprint, so the page goes back to its default, as in a browser. The line under
+ *     the buttons, which on the website points to the browser's print window, says instead "On
+ *     the Android print screen, choose Save as PDF as the printer.", and is emptied again if the
+ *     print screen could not open (the app's own short message says so).
  *
  *  5. ADD TO CALENDAR APP. Beside each Save a reminder button the app adds a button of its own
  *     (the website has none). A press clicks the page's own Save a reminder button with a mark
@@ -60,15 +63,16 @@
  *       line, and one that fails says "The file could not be saved. Try Save again." (E3-4);
  *     - a text too long for the app to hand over is refused before anything happens, with "This
  *       is too long for the app to hand over. Shorten it and try again." (A3-5, E3-6);
- *     - when no email app opened, a "Copied. Paste the letter into the message." line becomes
- *       "Copied." (E3-7), and the app's own short message says why.
+ *     - when no email app opened, the page's "Your email app should open a draft. ..." line is
+ *       emptied (E3-7), and the app's own short message says why.
  *     The page's own lines are plain text and its one live region is #announcer (E3-2), so every
  *     line written here is announced through #announcer too, and emptied from it a few seconds
  *     later, as the page does.
  *
- * Open email app needs nothing here: the page's mailto: link reaches the app as a navigation,
- * which the app hands to the email app (NavigationPolicy.kt). The same goes for links that open
- * a new tab: they go to the browser.
+ * Send using email app needs nothing here: the page's mailto: link (To, Cc, subject and the whole
+ * letter) reaches the app as a navigation, and the app hands its parts to the email app
+ * (NavigationPolicy.mailDraft). The same goes for links that open a new tab: they go to the
+ * browser.
  *
  * The channel is window.GLBridge, injected by the app through
  * WebViewCompat.addWebMessageListener and ONLY into pages from
@@ -200,14 +204,15 @@ type TextBox = HTMLTextAreaElement | HTMLInputElement;
   var MAX_ICS = 65536;
   var MAX_MESSAGE = 450000;
 
-  /* The app's own words. Every one of them was approved for the app (16 October 2026). */
+  /* The app's own words. Every one of them was approved for the app (16 October 2026), except
+     PRINT_SCREEN, new with Save as PDF (30 October 2026). */
   var CALENDAR_LABEL = 'Add to calendar app';
   var CALENDAR_OPENING = 'Opening your calendar app.';
   var CALENDAR_OPENED = 'Your calendar app opens with the reminder. Set its alert there, then save it.';
   var CALENDAR_FAILED = 'No calendar app opened. Save the reminder instead, and open the file in your calendar.';
   var TOO_LONG = 'This is too long for the app to hand over. Shorten it and try again.';
   var SAVE_FAILED = 'The file could not be saved. Try Save again.';
-  var COPIED = 'Copied.';
+  var PRINT_SCREEN = 'On the Android print screen, choose Save as PDF as the printer.';
   var CLOSE_QUESTION = 'Close the app? What you have typed will be lost.';
   var CLOSE_LABEL = 'Close';
 
@@ -315,7 +320,7 @@ type TextBox = HTMLTextAreaElement | HTMLInputElement;
     'tl-copy': 'tl-text', 'tl-print': 'tl-text', 'tl-save': 'tl-text', 'tl-share': 'tl-text'
   };
 
-  /* The status line of the latest press, and of the latest press on Open email app. */
+  /* The status line of the latest press, and of the latest press on Send using email app. */
   var lastStatus: HTMLElement | null = null;
   var emailStatus: HTMLElement | null = null;
 
@@ -486,7 +491,11 @@ type TextBox = HTMLTextAreaElement | HTMLInputElement;
       if (text.length > MAX_TEXT) tell(lastStatus, TOO_LONG);
       return;
     }
-    ask({ t: 'print', text: text, kind: printKind(text) });
+    var status = lastStatus;
+    tell(status, PRINT_SCREEN);
+    ask({ t: 'print', text: text, kind: printKind(text) }).then(function (answer) {
+      if (answer.ok !== true && status && status.textContent === PRINT_SCREEN) status.textContent = '';
+    });
   }
   Object.defineProperty(window, 'print', { value: print, writable: false, configurable: false, enumerable: false });
 
@@ -590,8 +599,8 @@ type TextBox = HTMLTextAreaElement | HTMLInputElement;
       return;
     }
     if (msg.t === 'no-email-app') {
-      /* The page said the letter was copied and the email app opened; only the first is true. */
-      if (emailStatus) emailStatus.textContent = (emailStatus.textContent as string).indexOf(COPIED) === 0 ? COPIED : '';
+      /* The page said the email app should open a draft; it did not. */
+      if (emailStatus) emailStatus.textContent = '';
       return;
     }
     if (msg.t !== 'reply') return;

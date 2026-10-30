@@ -15,7 +15,7 @@
 import { render, missing as missingParts } from './src/letters.js?v=11895179';
 import { computeDeadline, estimatePostalReceipt, explainDeadline } from './src/deadline.js?v=ed38cf9e';
 import { buildIcs, reminderDescription, reminderTitle } from './src/ics.js?v=07590fdf';
-import { buildMailto, looksLikeEmail } from './src/mailto.js?v=a345f24e';
+import { buildMailto, looksLikeEmail } from './src/mailto.js?v=befebd33';
 import { findSensitive, WARNINGS } from './src/personal-data.js?v=a95ac32c';
 import { isIsoDate, letterFileName, longDateEn, reminderFileName, toIso, dateEn } from './src/format.js?v=57ce12f7';
 import { render as renderFollowUp, missing as followUpMissing, checkItems, checkLabel, reminderCheck, extensionCheck, followUpFileName } from './src/followups.js?v=7476ccc7';
@@ -186,13 +186,8 @@ function updateFollowUp() {
     const gaps = followUpMissing(f);
     $('fu-missing').textContent = gaps.length ? `Still to fill in: ${gaps.join(', ')}.` : '';
     $('fu-missing').hidden = !gaps.length;
-    updateFuEmailButton();
 }
 const fuMeta = () => (fu.edited && fu.editedMeta) || { subject: fu.lastSubject, situation: radio('fu-situation') };
-function updateFuEmailButton() {
-    const { withBody } = buildMailto({ to: $('company-email').value, subject: fuMeta().subject, body: $('fu-letter').value });
-    $('fu-email').textContent = withBody ? 'Open email app' : 'Copy letter and open email app';
-}
 function updateTimeline() {
     const t = timelineState();
     for (const row of all('.tl-row'))
@@ -282,7 +277,9 @@ function updateWarnings() {
     setWarning($('scope-text-warn'), sensitiveWarnings($('scope-text').value));
     setWarning($('ground-d-text-warn'), sensitiveWarnings($('ground-d-text').value));
     const ce = $('company-email').value.trim();
-    setWarning($('company-email-warn'), ce && !looksLikeEmail(ce) ? ['This does not look like an email address, so Open email app will leave the recipient empty.'] : []);
+    setWarning($('company-email-warn'), ce && !looksLikeEmail(ce) ? ['This does not look like an email address, so Send using email app will leave the recipient empty.'] : []);
+    const oe = $('email').value.trim();
+    setWarning($('email-warn'), oe && !looksLikeEmail(oe) ? ['This does not look like an email address, so Send using email app will leave it out of Cc.'] : []);
 }
 function updateVisibility(s) {
     for (const el of all('[data-kind]'))
@@ -309,10 +306,6 @@ function updateLetter(s) {
     miss.hidden = !gaps.length;
 }
 const outMeta = () => (edited && editedMeta) || { subject: lastSubject, kind: radio('kind') };
-function updateEmailButton() {
-    const { withBody } = buildMailto({ to: $('company-email').value, subject: outMeta().subject, body: $('letter').value });
-    $('open-email').textContent = withBody ? 'Open email app' : 'Copy letter and open email app';
-}
 function deadlineNow() {
     const received = $('received').value;
     if (!isIsoDate(received))
@@ -401,7 +394,6 @@ function update() {
     updateVisibility(s);
     updateLetter(s);
     updateWarnings();
-    updateEmailButton();
     updateDeadline();
     updateFollowUp();
     updateTimeline();
@@ -484,25 +476,15 @@ async function onCopy() {
         status('Your browser did not allow copying. The letter is selected: press Ctrl+C, or Cmd+C on a Mac.');
     }
 }
-async function onEmail() {
+const DRAFT_HINT = 'Your email app should open a draft. Check that the whole letter is in it before you press Send.';
+function onEmail() {
     const to = $('company-email').value;
-    const { href, withBody } = buildMailto({ to, subject: outMeta().subject, body: $('letter').value });
+    openLink(buildMailto({ to, cc: $('email').value, subject: outMeta().subject, body: $('letter').value }));
     const noTo = looksLikeEmail(to) ? '' : ' Add the company\'s privacy email in step 2 to fill in the recipient.';
-    if (withBody) {
-        openLink(href);
-        status(`Your email app should open a draft.${noTo}`);
-        return;
-    }
-    const copied = await copyText($('letter').value);
-    openLink(href);
-    if (copied)
-        status(`Copied. Paste the letter into the message.${noTo}`);
-    else {
-        selectLetter();
-        status(`The letter is too long to hand to the email app. It is selected: copy it, then paste it into the message.${noTo}`);
-    }
+    status(`${DRAFT_HINT}${noTo}`);
 }
 let printSource = 'letter';
+const PRINT_HINT = 'In the print window, choose to save as PDF instead of a printer.';
 function fillPrint() {
     const p = $('print-letter');
     p.textContent = $(printSource).value;
@@ -511,13 +493,13 @@ function fillPrint() {
 function onPrint() {
     printSource = 'letter';
     fillPrint();
-    status('Your browser\'s print window also offers Save as PDF.');
+    status(PRINT_HINT);
     window.print();
 }
 function printBox(id, statusId) {
     printSource = id;
     fillPrint();
-    say(statusId, 'Your browser\'s print window also offers Save as PDF.');
+    say(statusId, PRINT_HINT);
     window.print();
 }
 function say(id, text) {
@@ -533,26 +515,12 @@ async function copyBox(id, statusId) {
         say(statusId, 'Your browser did not allow copying. The text is selected: press Ctrl+C, or Cmd+C on a Mac.');
     }
 }
-async function onFuEmail() {
+function onFuEmail() {
     const to = $('company-email').value;
-    const box = $('fu-letter');
-    const { href, withBody } = buildMailto({ to, subject: fuMeta().subject, body: box.value });
+    openLink(buildMailto({ to, cc: $('email').value, subject: fuMeta().subject, body: $('fu-letter').value }));
     const noTo = looksLikeEmail(to) ? '' : ' Add the company\'s privacy email in step 2 to fill in the recipient.';
     const attach = fuMeta().situation === 'reminder' ? ' Remember to attach your first letter.' : '';
-    if (withBody) {
-        openLink(href);
-        say('fu-status', `Your email app should open a draft.${attach}${noTo}`);
-        return;
-    }
-    const copied = await copyText(box.value);
-    openLink(href);
-    if (copied)
-        say('fu-status', `Copied. Paste the letter into the message.${attach}${noTo}`);
-    else {
-        box.focus();
-        box.select();
-        say('fu-status', `The letter is too long to hand to the email app. It is selected: copy it, then paste it into the message.${attach}${noTo}`);
-    }
+    say('fu-status', `${DRAFT_HINT}${attach}${noTo}`);
 }
 function onFuSave() {
     const name = followUpFileName(isIsoDate($('fu-date').value) ? $('fu-date').value : today());
@@ -723,7 +691,6 @@ function wire() {
                 edited = true;
             $('letter-edited').hidden = !edited;
             describe(t, 'letter-hint', 'letter-edited', edited);
-            updateEmailButton();
             return;
         }
         if (t.id === 'fu-letter') {
@@ -733,7 +700,6 @@ function wire() {
                 fu.edited = true;
             $('fu-edited').hidden = !fu.edited;
             describe(t, 'fu-letter-hint', 'fu-edited', fu.edited);
-            updateFuEmailButton();
             return;
         }
         if (t.id === 'tl-text') {

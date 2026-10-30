@@ -6,6 +6,7 @@ import no.stormberry.gdprletterbuilder.NavigationPolicy.Decision.EXTERNAL_APP
 import no.stormberry.gdprletterbuilder.NavigationPolicy.Decision.IN_APP
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -127,8 +128,8 @@ class NavigationPolicyTest {
     }
 
     /**
-     * Open email app (spec section 6, OUT-1): the page builds the address with encodeURIComponent
-     * only (src/mailto.js), with or without a recipient and with or without the body. Every form it
+     * Send using email app (spec section 6, OUT-1): the page builds the address with
+     * encodeURIComponent only (src/mailto.js), with or without a recipient and a Cc. Every form it
      * makes goes to the email app.
      */
     @Test fun thePagesMailtoLinksGoToTheEmailApp() {
@@ -137,6 +138,7 @@ class NavigationPolicyTest {
             "mailto:privacy@example.no?subject=${enc("Request for access to my personal data (GDPR Article 15)")}&body=${enc("Dear Sir or Madam,\n\nÆ ø å (c)")}",
             "mailto:?subject=${enc("Innsyn i personopplysninger om meg (personvernforordningen artikkel 15)")}",
             "mailto:dpo%2Bgdpr@example.com?subject=x",
+            "mailto:privacy@example.no?cc=me@example.com&subject=x&body=y",
         ).forEach {
             assertEquals(it, EXTERNAL_APP, NavigationPolicy.decide(it))
         }
@@ -171,5 +173,85 @@ class NavigationPolicyTest {
         for (not in listOf("$base/privacy.html", "https://example.com/", "http://appassets.androidplatform.net/", null)) {
             assertFalse("$not", NavigationPolicy.isStartPage(not))
         }
+    }
+
+    // ---- mailDraft: the page's mailto: link read into the parts the email app gets
+
+    private val enc = { s: String -> java.net.URLEncoder.encode(s, "UTF-8").replace("+", "%20") }
+
+    /** What src/mailto.js makes: To, Cc, the subject and the whole letter, Norwegian letters and line breaks kept. */
+    @Test fun aDraftWithEveryPart() {
+        val body = "Til personvernombudet\r\n\r\nJeg ber om innsyn. Blåbær, ærlig, øl.\r\nMed vennlig hilsen\r\nÅse Ørn"
+        val subject = "Innsyn i personopplysninger om meg (personvernforordningen artikkel 15)"
+        val url = "mailto:personvern@eksempel-handel.example?cc=ase.orn@example.no&subject=${enc(subject)}&body=${enc(body)}"
+        assertEquals(EXTERNAL_APP, NavigationPolicy.decide(url))
+        val d = NavigationPolicy.mailDraft(url)!!
+        assertEquals("personvern@eksempel-handel.example", d.to)
+        assertEquals("ase.orn@example.no", d.cc)
+        assertEquals(subject, d.subject)
+        assertEquals("Til personvernombudet\n\nJeg ber om innsyn. Blåbær, ærlig, øl.\nMed vennlig hilsen\nÅse Ørn", d.body)
+    }
+
+    @Test fun noCcWhenThePersonGaveNoAddress() {
+        val d = NavigationPolicy.mailDraft("mailto:privacy@example.no?subject=x&body=Line%201%0D%0ALine%202")!!
+        assertEquals("privacy@example.no", d.to)
+        assertNull(d.cc)
+        assertEquals("x", d.subject)
+        assertEquals("Line 1\nLine 2", d.body)
+    }
+
+    @Test fun noRecipientWhenTheCompanyEmailIsMissing() {
+        val d = NavigationPolicy.mailDraft("mailto:?cc=me@example.no&subject=s&body=b")!!
+        assertNull(d.to)
+        assertEquals("me@example.no", d.cc)
+        assertEquals("b", d.body)
+    }
+
+    /** The encoded local part (dpo+gdpr), a domain in Unicode, and a long letter kept whole. */
+    @Test fun encodedAddressesAndALongBody() {
+        val long = "Æøå line\r\n".repeat(20_000)
+        val d = NavigationPolicy.mailDraft("mailto:dpo%2Bgdpr@b%C3%B8ker.no?subject=x&body=${enc(long)}")!!
+        assertEquals("dpo+gdpr@bøker.no", d.to)
+        assertEquals("Æøå line\n".repeat(20_000), d.body)
+        // A "+" is a "+" in mailto:, never a space.
+        assertEquals("a+b", NavigationPolicy.mailDraft("mailto:x@y.no?subject=a+b")!!.subject)
+    }
+
+    /** The footer's links on the privacy page and the disclaimer: a recipient alone. */
+    @Test fun aPlainAddress() {
+        assertEquals(NavigationPolicy.MailDraft("info@stormberry.as", null, null, null), NavigationPolicy.mailDraft("mailto:info@stormberry.as"))
+        assertEquals("info@stormberry.as", NavigationPolicy.mailDraft("MAILTO:info@stormberry.as?subject=Hello")!!.to)
+    }
+
+    /** Nothing the page never makes is handed over: an extra header, a second address, a line break in a header. */
+    @Test fun injectedHeadersAndAddressesAreRefused() {
+        listOf(
+            "mailto:a@b.no?subject=s&bcc=evil@example.com",
+            "mailto:a@b.no?to=evil@example.com&subject=s",
+            "mailto:a@b.no?subject=s&in-reply-to=x",
+            "mailto:a@b.no?subject=s&subject=t",
+            "mailto:a@b.no?cc=me@c.no&cc=evil@example.com",
+            "mailto:a@b.no?cc=me@c.no%2Cevil@example.com",
+            "mailto:a@b.no?cc=me@c.no%0D%0ABcc:%20evil@example.com",
+            "mailto:a@b.no?cc=%3Cevil@example.com%3E",
+            "mailto:a@b.no?cc=",
+            "mailto:a@b.no?cc=nobody",
+            "mailto:a@b.no%2Cevil@example.com?subject=s",
+            "mailto:a@b.no;evil@example.com",
+            "mailto:a@@b.no",
+            "mailto:a@b.no?subject=Hi%0D%0ABcc:%20evil@example.com",
+            "mailto:a@b.no?subject=Hi%0ABcc:%20evil@example.com",
+            "mailto:a@b.no?subject=s&body",
+            "mailto:a@b.no?subject=s&=x",
+            "mailto:a@b.no?subject=%E2%28%A1",
+            "mailto:a@b.no?subject=%4",
+            "mailto:a@b.no?subject=%zz",
+            "mailto:a@b.no?subject=s#frag",
+            "mailto:",
+            "mailto://evil.example/x",
+            "nostr:npub1abc",
+            "https://example.com/?to=a@b.no",
+            null,
+        ).forEach { assertNull("$it", NavigationPolicy.mailDraft(it)) }
     }
 }

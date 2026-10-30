@@ -9,6 +9,7 @@
     <string name="file_save_failed">The file could not be saved. Try Save again.</string>
     <string name="no_app_for_link">No app on this device can open that link.</string>
     <string name="no_email_app">No email app on this device. Copy or save the letter instead.</string>
+    <string name="email_refused">This email draft could not be handed to an email app.</string>
     <string name="no_calendar_app">No calendar app on this device. Save the reminder instead.</string>
     <string name="calendar_failed">The reminder could not be opened in a calendar app.</string>
     <string name="print_failed">Printing could not start on this device.</string>

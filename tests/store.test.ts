@@ -24,11 +24,17 @@ const WORKFLOW = '.github/workflows/android-release.yml';
 const GRADLE = 'android/app/build.gradle.kts';
 const DRAFT = 'DRAFT, not approved';
 const RELEASE_CERT = '8287710abd10fc1d37615299bd11c3e79306545ecc3e1b968010da54a80424e2';
+// The Google Play upload key (30 October 2026): it signs the Play bundle only, never an APK of this workflow.
+const UPLOAD_CERT = '54ffe8dbc5f4361b75e4800261b9d33844bed272f55648c75959a202b12535d0';
 
 /** A store text, as Zapstore reads it (approved 30 October 2026, so there is no DRAFT line to take off). */
 const text = (rel: string): string => read(rel);
-const versionCode = (): number => Number(read(GRADLE).match(/versionCode = (\d+)/)![1]);
-const versionName = (): string => read(GRADLE).match(/versionName = "([^"]+)"/)![1]!;
+const versionCode = (): number => Number(read(GRADLE).match(/^\s*versionCode = (\d+)$/m)![1]);
+const versionName = (): string => read(GRADLE).match(/^\s*versionName = "([^"]+)"$/m)![1]!;
+
+/** Every file under a folder of the repository, as paths relative to the root. */
+const walkFiles = (rel: string): string[] => readdirSync(join(ROOT, rel), { withFileTypes: true }).flatMap((e) =>
+  e.isDirectory() ? walkFiles(`${rel}/${e.name}`) : [`${rel}/${e.name}`]);
 
 /** The value of a top-level `key: value` line of zapstore.yaml, quotes removed. */
 const yamlValue = (yaml: string, key: string): string => {
@@ -154,7 +160,9 @@ test('privacy.html says what the Android app does, and only what its manifest al
   for (const part of ['<h2>The Android app</h2>', '<h2>Where you got the app</h2>']) assert.ok(html.includes(part), part);
   for (const part of ['asks for no Android permission at all and has no internet access', 'not to send usage statistics to Google',
     'not to look up addresses in Google\'s lists of harmful sites', 'Android 13 and later hide it in the clipboard preview', 'Add to calendar app',
-    'the app never reads or writes your calendar itself', 'keeps the fields out of Android\'s autofill', 'Android\'s backups leave it out']) {
+    'the app never reads or writes your calendar itself', 'keeps the fields out of Android\'s autofill', 'Android\'s backups leave it out',
+    'A separate Google Play edition is built from the same source, with the same features and the same lack of permissions',
+    'The app itself has no internet access and sends nothing, to Google or to us']) {
     assert.ok(text.includes(part), part);
   }
   const manifest = read('android/app/src/main/AndroidManifest.xml');
@@ -204,6 +212,54 @@ test('the release workflow runs every check the README names, before it builds t
   const pin = wf.match(/^ {10}EXPECTED_CERT=(.*)$/m)![1]!;
   assert.equal(pin, RELEASE_CERT);
   assert.ok(wf.indexOf('Read the pinned certificate') < wf.indexOf('name: Decode keystore'));
+});
+
+// The Google Play edition (StopScroll's switch, approved for GDPRLetterBuilder on 30 October 2026)
+
+test('the Play switch: -PplayBuild=true builds no.stormberry.gdprletterbuilder.play, versionCode 1000 plus the sovereign one', () => {
+  const gradle = read(GRADLE);
+  assert.ok(versionCode() < 1000, 'the sovereign versionCode stays below the Play offset');
+  assert.match(gradle, /^val PLAY_VERSION_CODE_OFFSET = 1000$/m);
+  assert.match(gradle, /applicationId = if \(playBuild\) "no\.stormberry\.gdprletterbuilder\.play" else "no\.stormberry\.gdprletterbuilder"/);
+  assert.match(gradle, /versionCode = 1\n {8}versionName = "0\.0\.1"\n {8}if \(playBuild\) \{\n {12}versionCode = PLAY_VERSION_CODE_OFFSET \+ versionCode!!\n {8}\}/);
+  // Strict parsing: a bare -PplayBuild means Play, anything unknown stops the build.
+  assert.match(gradle, /"", "true", "1", "yes" -> true\n\s*"false", "0", "no" -> false\n\s*else -> error\(/);
+  assert.match(gradle, /if \(playBuild\) \{\n {4}base \{ archivesName = "gdprletterbuilder-play" \}\n\}/);
+  assert.match(read('README.md'), /\| `android-v0\.0\.1` \| 1 \| 0\.0\.1 \| 1001 \|/);
+  // The Play edition has the same features: nothing in the app's code or manifest depends on the switch.
+  for (const f of walkFiles('android/app/src/main')) assert.ok(!/playBuild|\.play\b/.test(read(f)), `${f} depends on the Play switch`);
+});
+
+test('the Play guards: no release bundle without -PplayBuild=true, no release APK with it, the upload key never the release key', () => {
+  const gradle = read(GRADLE);
+  assert.match(gradle, /tasks\.matching \{ it\.name in releaseApkTasks \|\| it\.name == "signReleaseBundle" \}/);
+  // Every task that writes a release APK is guarded as one, the APKs AGP makes from the bundle included.
+  const apkTasks = gradle.match(/^val releaseApkTasks = setOf\(\n([\s\S]*?)\n\)$/m)![1]!.match(/"(\w+)"/g)!.map((s) => s.slice(1, -1)).sort();
+  assert.deepEqual(apkTasks, ['extractApksForRelease', 'makeApkFromBundleForRelease', 'packageRelease', 'packageReleaseUniversalApk']);
+  assert.match(gradle, /if \(isBundle && !play\) \{\n\s*error\(\n\s*"Refusing to build a release bundle without -PplayBuild=true/);
+  assert.match(gradle, /if \(!isBundle && play\) \{\n\s*error\(\n\s*"Refusing to build a release APK with -PplayBuild=true/);
+  assert.match(gradle, /if \(!haveUploadKey\) \{\n\s*error\(\n\s*"playBuild=true but the Play upload keystore is not fully configured/);
+  assert.match(gradle, /rel\.canonicalFile == upl\.canonicalFile \|\| rel\.readBytes\(\)\.contentEquals\(upl\.readBytes\(\)\)/);
+  assert.match(gradle, /if \(configurationCacheRequested && \(uploadStorePassword != null \|\| uploadKeyPassword != null\)\)/);
+  // The upload key is read from Gradle properties or the environment (PLAY_UPLOAD_*), never from the release key's names.
+  for (const k of ['PLAY_UPLOAD_STORE_FILE', 'PLAY_UPLOAD_STORE_PASSWORD', 'PLAY_UPLOAD_KEY_ALIAS', 'PLAY_UPLOAD_KEY_PASSWORD']) assert.match(gradle, new RegExp(`signingValue\\("\\w+", "${k}"\\)`));
+  assert.match(gradle, /if \(playBuild\) \{\n\s*if \(canSignPlayUpload\) signingConfig = signingConfigs\.getByName\("playUpload"\)\n\s*\} else if \(canSignRelease && !unsignedRelease\) \{\n\s*signingConfig = signingConfigs\.getByName\("release"\)/);
+  assert.notEqual(UPLOAD_CERT, RELEASE_CERT);
+  assert.match(read('README.md'), new RegExp(`upload key \\(certificate SHA-256 \`${UPLOAD_CERT}\`\\)`));
+});
+
+test('the release workflow never builds the Play edition and refuses any package but the sovereign one', () => {
+  const wf = read(WORKFLOW);
+  assert.doesNotMatch(wf, /playBuild|bundleRelease|PLAY_UPLOAD|\.aab\b/);
+  assert.doesNotMatch(wf, new RegExp(UPLOAD_CERT));
+  const gradlew = [...wf.matchAll(/^\s*run: (\.\/gradlew .*)$/gm)].map((m) => m[1]!);
+  assert.deepEqual(gradlew, [
+    './gradlew --no-daemon :app:testDebugUnitTest :app:verifyWebAssets :app:verifyWebAssetsCommitted :app:lintRelease',
+    './gradlew --no-daemon -PunsignedRelease=true :app:assembleRelease',
+  ]);
+  assert.ok(wf.includes('[ "$PACKAGE" = no.stormberry.gdprletterbuilder ] || { echo "::error::the APK is $PACKAGE, not no.stormberry.gdprletterbuilder"; exit 1; }'));
+  assert.ok(wf.includes('[ "$VERSION_CODE" -lt 1000 ] ||'));
+  assert.ok(wf.indexOf('[ "$PACKAGE" = no.stormberry.gdprletterbuilder ]') < wf.indexOf('name: Decode keystore'));
 });
 
 test('the release workflow expects exactly the web files the Gradle build bundles', () => {

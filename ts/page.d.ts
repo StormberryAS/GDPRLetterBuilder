@@ -28,6 +28,7 @@ interface PageElements {
   'deadline-result': HTMLDivElement;
   'dpo': HTMLInputElement;
   'email': HTMLInputElement;
+  'email-warn': HTMLParagraphElement;
   'ext-status': HTMLParagraphElement;
   'fu-answer-date': HTMLInputElement;
   'fu-answer-field': HTMLDivElement;

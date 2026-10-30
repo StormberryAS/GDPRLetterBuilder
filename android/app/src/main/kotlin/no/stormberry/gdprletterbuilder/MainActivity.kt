@@ -41,6 +41,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.JavaScriptReplyProxy
@@ -64,9 +65,11 @@ import kotlin.math.roundToInt
  *  - Save as text file and Save a reminder: Android's save screen (Storage Access Framework, so
  *    no storage permission), under the page's own neutral file name;
  *  - Add to calendar app: Android's calendar insert intent for the reminder (no permission);
- *  - Print or save as PDF: Android's print screen with the text the page would print, because
- *    window.print() does nothing inside the WebView (LetterPrintAdapter);
- *  - Open email app: the page's mailto: link handed to the email app (NavigationPolicy);
+ *  - Save as PDF: Android's print screen with the text the page would print, where Save as PDF
+ *    is one of the printers, because window.print() does nothing inside the WebView
+ *    (LetterPrintAdapter);
+ *  - Send using email app: the page's mailto: link read into its parts (To, Cc, subject and the
+ *    whole letter as the body; NavigationPolicy.mailDraft) and handed to the email app as a draft;
  *  - the source links: the user's browser, never inside the app;
  *  - the privacy page and the disclaimer: a second WebView over the letter, so Back returns to
  *    the letter as it was (E3-1);
@@ -414,7 +417,7 @@ class MainActivity : ComponentActivity() {
             // Leaving the app needs a press. A navigation the page starts on its own (a script
             // setting location, a meta refresh) without a recent press never opens the browser
             // or another app. hasGesture() is Chromium's user activation: a source link the
-            // person taps, or the mailto: link Open email app clicks for them within a moment of
+            // person taps, or the mailto: link Send using email app clicks for them within a moment of
             // the press, counts; only a fault in the bundled page could start anything else (its
             // policy blocks any injected script). The page itself never leaves: the WebView stays
             // on its own origin whatever is pressed.
@@ -493,10 +496,25 @@ class MainActivity : ComponentActivity() {
      * mailto: goes to an email app as a draft (ACTION_SENDTO: nothing is sent until the person
      * presses Send there), nostr: to a Nostr client, only one that accepts being opened from a
      * web link (BROWSABLE).
+     *
+     * The draft's parts travel as extras on a bare mailto: (Android's documented way to compose an
+     * email): To in EXTRA_EMAIL, Cc in EXTRA_CC only when the link has one, the subject in
+     * EXTRA_SUBJECT and the whole letter in EXTRA_TEXT. A long letter then never depends on how
+     * much of a link the email app reads. A link mailDraft() refuses is never handed over.
      */
     private fun openInOtherApp(uri: Uri, fromLetter: Boolean) {
         val mail = uri.scheme.equals("mailto", ignoreCase = true)
-        val intent = if (mail) Intent(Intent.ACTION_SENDTO, uri) else Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
+        val intent = if (mail) {
+            val draft = NavigationPolicy.mailDraft(uri.toString())
+            if (draft == null) {
+                toast(R.string.email_refused)
+                if (fromLetter) pageProxy?.let { post(it, JSONObject().put("t", "no-email-app")) }
+                return
+            }
+            emailIntent(draft)
+        } else {
+            Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
+        }
         try {
             startActivity(intent)
         } catch (_: Exception) {
@@ -504,6 +522,15 @@ class MainActivity : ComponentActivity() {
             // The page's line under the buttons must not say the email app opened (E3-7).
             if (mail && fromLetter) pageProxy?.let { post(it, JSONObject().put("t", "no-email-app")) }
         }
+    }
+
+    private fun emailIntent(draft: NavigationPolicy.MailDraft): Intent {
+        val intent = Intent(Intent.ACTION_SENDTO, "mailto:".toUri())
+        draft.to?.let { intent.putExtra(Intent.EXTRA_EMAIL, arrayOf(it)) }
+        draft.cc?.let { intent.putExtra(Intent.EXTRA_CC, arrayOf(it)) }
+        draft.subject?.let { intent.putExtra(Intent.EXTRA_SUBJECT, it) }
+        draft.body?.let { intent.putExtra(Intent.EXTRA_TEXT, it) }
+        return intent
     }
 
     // ---------------------------------------------------------------- bridge

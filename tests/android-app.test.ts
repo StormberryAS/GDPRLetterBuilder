@@ -144,7 +144,8 @@ test('large text: both WebViews keep textZoom, and the default font size stays t
 test('names, versions and the activity: GDPRLetterBuilder everywhere, as CheckLink\'s template', () => {
   const gradle = read(GRADLE);
   assert.match(gradle, /namespace = "no\.stormberry\.gdprletterbuilder"/);
-  assert.match(gradle, /applicationId = "no\.stormberry\.gdprletterbuilder"/);
+  // The sovereign package, or the Google Play edition's with -PplayBuild=true (tests/store.test.ts pins the switch).
+  assert.match(gradle, /applicationId = if \(playBuild\) "no\.stormberry\.gdprletterbuilder\.play" else "no\.stormberry\.gdprletterbuilder"\n/);
   assert.match(gradle, /versionCode = 1\s+versionName = "0\.0\.1"/);
   assert.match(gradle, /minSdk = 24\s+targetSdk = 36/);
   assert.match(gradle, /applicationIdSuffix = "\.debug"/);
@@ -399,10 +400,11 @@ test('the app-only texts of the stage 3 fix round are exactly the approved ones,
   assert.match(read('index.html'), /<button type="button" class="btn btn-secondary" id="confirm-cancel">Cancel<\/button>/);
   // A3-5, E3-6: the size refusal, as a status line.
   assert.equal(js('TOO_LONG'), 'This is too long for the app to hand over. Shorten it and try again.');
-  // E3-4 and E3-7 reuse approved texts: the save toast and the page's own "Copied.".
+  // E3-4 reuses an approved text: the save toast.
   assert.equal(js('SAVE_FAILED'), str('file_save_failed'));
-  assert.equal(js('COPIED'), 'Copied.');
-  assert.match(read('ts/app.ts'), /status\('Copied\.'\)/);
+  // Save as PDF (30 October 2026): the line under the buttons in the app, where the page names the browser's print window.
+  assert.equal(js('PRINT_SCREEN'), 'On the Android print screen, choose Save as PDF as the printer.');
+  assert.match(read('ts/app.ts'), /const PRINT_HINT = 'In the print window, choose to save as PDF instead of a printer\.';/);
 });
 
 test('Back and the side pages: the privacy page and the disclaimer open over the letter, and Back asks first (E3-1)', () => {

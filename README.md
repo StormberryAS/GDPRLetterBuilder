@@ -17,7 +17,7 @@ A functioning prototype from [Stormberry Labs](https://stormberry.as/labs.html).
 3. **About you.** Your name, your email or postal address, where the reply should go, and any details that help them find your data. A warning shows if you type something that looks like a Norwegian national identity number or a payment card number. It warns and never blocks.
 4. **What to ask for.** Everything, or only something you name. For access, the look-ups of your data (off by default) and the format of the copy. For erasure, the grounds (all optional) and the extras.
 5. **Your letter.** A live letter in English or Bokmål. You can edit it; once you do, the form no longer changes it, until you rebuild it.
-6. **Send it yourself.** Copy, open your email app (a draft, never sent), print or save as PDF, save as a text file, or share.
+6. **Send it yourself.** Copy it; send using your email app (a draft with the whole letter, to the company's privacy email, with your own address as Cc if you gave one; nothing is sent until you press Send); save as PDF; save as a text file; or share.
 7. **Remember the deadline.** One month from receipt, counted the way the European Data Protection Board describes, with weekends and Norwegian public holidays rolled over. For post, the date of receipt is estimated. The extension is shown as the later of the two ways of counting it. A reminder file (.ics) holds the deadline and, unless you leave it out, the company's name; never your details.
 8. **If they do not answer, or not fully.** What the law says in each situation, and what you can do.
 9. **Write a follow-up letter.** A reminder when no answer came; the items an answer left out, ticked off against what the first letter asked for; an extension without reasons or told too late; a refusal without its reasons, its § 16 reference or the complaint information; a request for identity information beyond what is needed. In English or Bokmål, with a hint when a reminder may be early. No threat and no time limit of its own.
@@ -42,7 +42,7 @@ No inline scripts or styles, no WebAssembly, no worker, no form element, no URL 
 
 ## Android app
 
-The Android app (package `no.stormberry.gdprletterbuilder`, Android 7.0 or later) runs the same files as the website, bundled inside it, offline, in Android's web view. It adds what the page cannot do well inside an app: **Add to calendar app** hands the reminder to your calendar app, **Print or save as PDF** opens Android's print screen, and the save buttons open Android's save screen. Each `android-v*` tag runs the release workflow, which publishes `gdprletterbuilder-v<version>.apk` on this repository's releases page with a `.sha256` file and a build provenance attestation. The release is then listed on Zapstore. Nothing has been released yet.
+The Android app (package `no.stormberry.gdprletterbuilder`, Android 7.0 or later) runs the same files as the website, bundled inside it, offline, in Android's web view. It adds what the page cannot do well inside an app: **Add to calendar app** hands the reminder to your calendar app, **Save as PDF** opens Android's print screen (Save as PDF or a printer), **Send using email app** hands the draft's parts to your email app, and the save buttons open Android's save screen. Each `android-v*` tag runs the release workflow, which publishes `gdprletterbuilder-v<version>.apk` on this repository's releases page with a `.sha256` file and a build provenance attestation. The release is then listed on Zapstore. A Google Play edition is built from the same source (below).
 
 ### Install
 
@@ -104,6 +104,20 @@ Requirements: JDK 21 and the Android SDK with platform 37.1 and build-tools 36.0
 The app bundles an explicit list of web files (`WebAssets.INCLUDES` in `android/app/build.gradle.kts`): the page, its modules, the style sheets, the privacy page, the disclaimer, the first-run notice, the fonts with their licence and the carousel icons. Every build checks that each bundled file is byte for byte the one GitHub Pages publishes (apart from one line in `index.html` that loads `android/web-overlay/android-bridge.js`), that every file the page refers to is bundled, and that nothing else is; a release build also checks them against the commit `HEAD` points at. `fastlane/`, `zapstore.yaml` and this README are never bundled.
 
 The store files are `fastlane/metadata/android/en-US/` (the title, the descriptions, the release note of each versionCode, the icon, the feature graphic and the phone screenshots) and `zapstore.yaml`; `tests/store.test.ts` checks them, and the release workflow against them. `android/tools/build-store-icon.py` renders the icon and the feature graphic from the launcher icon (Chromium and Pillow). A signed release needs the release key, which never enters this repository: the release workflow signs with apksigner from the `release` environment's secrets.
+
+### Google Play edition
+
+The same source also builds a Google Play edition, a separate package, `no.stormberry.gdprletterbuilder.play`, with the same features, the same bundled web files and the same lack of permissions. Only the application ID, the versionCode and the signing differ: Google re-signs the bundle with an app signing key it holds, and our upload key (certificate SHA-256 `54ffe8dbc5f4361b75e4800261b9d33844bed272f55648c75959a202b12535d0`) only proves who uploaded it. The two packages install side by side and neither can update the other. The release workflow never builds it: it publishes the sovereign APK only and refuses any other package.
+
+```bash
+./gradlew --no-configuration-cache :app:bundleRelease -PplayBuild=true   # needs the Play upload key (PLAY_UPLOAD_*)
+```
+
+The build refuses a release bundle without `-PplayBuild=true` or without a complete upload key, a release APK with `-PplayBuild=true` (the universal APK and the split APKs made from the bundle included), an upload key that is the release key, and a signing password with the configuration cache on. Every Play bundle is built from a release tag that shipped on GitHub Releases; Play shows the same version name, and its versionCode is 1000 plus the sovereign one.
+
+| Release tag | versionCode | Play versionName | Play versionCode |
+|-|-|-|-|
+| `android-v0.0.1` | 1 | 0.0.1 | 1001 |
 
 ## Try it locally
 

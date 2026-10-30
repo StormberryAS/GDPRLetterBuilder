@@ -221,16 +221,10 @@ function updateFollowUp() {
   const gaps = followUpMissing(f);
   $('fu-missing').textContent = gaps.length ? `Still to fill in: ${gaps.join(', ')}.` : '';
   $('fu-missing').hidden = !gaps.length;
-  updateFuEmailButton();
 }
 
 /** The subject and situation the outputs use: the edited letter's own, once it has been edited (K2-11). */
 const fuMeta = () => (fu.edited && fu.editedMeta) || { subject: fu.lastSubject, situation: radio('fu-situation') };
-
-function updateFuEmailButton() {
-  const { withBody } = buildMailto({ to: $('company-email').value, subject: fuMeta().subject, body: $('fu-letter').value });
-  $('fu-email').textContent = withBody ? 'Open email app' : 'Copy letter and open email app';
-}
 
 function updateTimeline() {
   const t = timelineState();
@@ -336,7 +330,10 @@ function updateWarnings() {
   setWarning($('scope-text-warn'), sensitiveWarnings($('scope-text').value));
   setWarning($('ground-d-text-warn'), sensitiveWarnings($('ground-d-text').value));
   const ce = $('company-email').value.trim();
-  setWarning($('company-email-warn'), ce && !looksLikeEmail(ce) ? ['This does not look like an email address, so Open email app will leave the recipient empty.'] : []);
+  setWarning($('company-email-warn'), ce && !looksLikeEmail(ce) ? ['This does not look like an email address, so Send using email app will leave the recipient empty.'] : []);
+  // The person's own address goes in the draft's Cc only when it passes the same check (OUT-1).
+  const oe = $('email').value.trim();
+  setWarning($('email-warn'), oe && !looksLikeEmail(oe) ? ['This does not look like an email address, so Send using email app will leave it out of Cc.'] : []);
 }
 
 // What shows
@@ -368,11 +365,6 @@ function updateLetter(s: ReturnType<typeof state>) {
 
 /** The subject and kind the outputs use: the edited letter's own, once the person has edited it. */
 const outMeta = () => (edited && editedMeta) || { subject: lastSubject, kind: radio('kind') };
-
-function updateEmailButton() {
-  const { withBody } = buildMailto({ to: $('company-email').value, subject: outMeta().subject, body: $('letter').value });
-  $('open-email').textContent = withBody ? 'Open email app' : 'Copy letter and open email app';
-}
 
 // The deadline
 
@@ -473,7 +465,6 @@ function update() {
   updateVisibility(s);
   updateLetter(s);
   updateWarnings();
-  updateEmailButton();
   updateDeadline();
   updateFollowUp();
   updateTimeline();
@@ -573,22 +564,19 @@ async function onCopy() {
   }
 }
 
-async function onEmail() {
+// Some email apps may read only the start of a long mailto: link, so the person checks the draft.
+const DRAFT_HINT = 'Your email app should open a draft. Check that the whole letter is in it before you press Send.';
+
+/**
+ * Send using email app (OUT-1): a draft in the person's own email app with the letter as it
+ * stands, to the company's privacy email, with their own email address as Cc when they gave one.
+ * Nothing is copied: the whole letter is in the draft.
+ */
+function onEmail() {
   const to = $('company-email').value;
-  const { href, withBody } = buildMailto({ to, subject: outMeta().subject, body: $('letter').value });
+  openLink(buildMailto({ to, cc: $('email').value, subject: outMeta().subject, body: $('letter').value }));
   const noTo = looksLikeEmail(to) ? '' : ' Add the company\'s privacy email in step 2 to fill in the recipient.';
-  if (withBody) {
-    openLink(href);
-    status(`Your email app should open a draft.${noTo}`);
-    return;
-  }
-  const copied = await copyText($('letter').value);
-  openLink(href);
-  if (copied) status(`Copied. Paste the letter into the message.${noTo}`);
-  else {
-    selectLetter();
-    status(`The letter is too long to hand to the email app. It is selected: copy it, then paste it into the message.${noTo}`);
-  }
+  status(`${DRAFT_HINT}${noTo}`);
 }
 
 // What the print style sheet shows: the first letter, unless a print button of the follow-up or
@@ -596,6 +584,9 @@ async function onEmail() {
 // some browsers return from print() before they fire beforeprint (code review of 16 October 2026,
 // K2-1). The browser's own print command (Ctrl+P) prints the first letter.
 let printSource: 'letter' | 'fu-letter' | 'tl-text' = 'letter';
+// Save as PDF (OUT-4) opens the browser's print window, where the person picks the PDF.
+// Browsers name that choice differently (Save as PDF, Save to PDF, PDF), so the hint names none.
+const PRINT_HINT = 'In the print window, choose to save as PDF instead of a printer.';
 function fillPrint() {
   const p = $('print-letter');
   p.textContent = $(printSource).value;
@@ -605,14 +596,14 @@ function fillPrint() {
 function onPrint() {
   printSource = 'letter';
   fillPrint();
-  status('Your browser\'s print window also offers Save as PDF.');
+  status(PRINT_HINT);
   window.print();
 }
 
 function printBox(id: 'fu-letter' | 'tl-text', statusId: 'fu-status' | 'tl-status') {
   printSource = id;
   fillPrint();
-  say(statusId, 'Your browser\'s print window also offers Save as PDF.');
+  say(statusId, PRINT_HINT);
   window.print();
 }
 
@@ -634,25 +625,12 @@ async function copyBox(id: 'fu-letter' | 'tl-text', statusId: 'fu-status' | 'tl-
   }
 }
 
-async function onFuEmail() {
+function onFuEmail() {
   const to = $('company-email').value;
-  const box = $('fu-letter');
-  const { href, withBody } = buildMailto({ to, subject: fuMeta().subject, body: box.value });
+  openLink(buildMailto({ to, cc: $('email').value, subject: fuMeta().subject, body: $('fu-letter').value }));
   const noTo = looksLikeEmail(to) ? '' : ' Add the company\'s privacy email in step 2 to fill in the recipient.';
   const attach = fuMeta().situation === 'reminder' ? ' Remember to attach your first letter.' : '';
-  if (withBody) {
-    openLink(href);
-    say('fu-status', `Your email app should open a draft.${attach}${noTo}`);
-    return;
-  }
-  const copied = await copyText(box.value);
-  openLink(href);
-  if (copied) say('fu-status', `Copied. Paste the letter into the message.${attach}${noTo}`);
-  else {
-    box.focus();
-    box.select();
-    say('fu-status', `The letter is too long to hand to the email app. It is selected: copy it, then paste it into the message.${attach}${noTo}`);
-  }
+  say('fu-status', `${DRAFT_HINT}${attach}${noTo}`);
 }
 
 function onFuSave() {
@@ -834,7 +812,6 @@ function wire() {
       if (t.value !== lastRendered) edited = true;
       $('letter-edited').hidden = !edited;
       describe(t, 'letter-hint', 'letter-edited', edited);
-      updateEmailButton();
       return;
     }
     if (t.id === 'fu-letter') {
@@ -842,7 +819,6 @@ function wire() {
       if (t.value !== fu.lastRendered) fu.edited = true;
       $('fu-edited').hidden = !fu.edited;
       describe(t, 'fu-letter-hint', 'fu-edited', fu.edited);
-      updateFuEmailButton();
       return;
     }
     if (t.id === 'tl-text') {

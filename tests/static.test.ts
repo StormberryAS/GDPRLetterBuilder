@@ -273,9 +273,10 @@ test('the manifest of files: the repository holds exactly the expected files', (
   const walk = (d: string): string[] => readdirSync(d).flatMap((n) => {
     const p = join(d, n);
     if (ANDROID_LOCAL.has(relative(ROOT, p))) return [];
-    // npm ci's TypeScript (.gitignore), and the build script's record of its last build until the
-    // repository is under git (.gitignore): neither is part of the repository.
-    if (relative(ROOT, p) === 'node_modules' || relative(ROOT, p) === '.build-ts.last') return [];
+    // npm ci's TypeScript (.gitignore), the build script's record of its last build outside git
+    // (.gitignore), and git's own folder (the repository is under git since 30 October 2026, in the
+    // vault and in every CI checkout): none is a file of the repository.
+    if (['node_modules', '.build-ts.last', '.git'].includes(relative(ROOT, p))) return [];
     return statSync(p).isDirectory() ? walk(p) : [relative(ROOT, p)];
   });
   const all = walk(ROOT).filter((f) => !/^(fonts|switcher-icons)\//.test(f) && !/^tests\/goldens\/.*\.txt$/.test(f) && !/__pycache__|\.pyc$/.test(f)).sort();
@@ -284,7 +285,6 @@ test('the manifest of files: the repository holds exactly the expected files', (
   assert.equal(readdirSync(join(ROOT, 'tests', 'goldens', 'followup')).filter((f) => f.endsWith('.txt')).length, FOLLOWUP_GOLDENS);
   assert.equal(readdirSync(join(ROOT, 'switcher-icons')).length, 21);
   assert.equal(readdirSync(join(ROOT, 'fonts', 'inter')).length, 39);
-  assert.ok(!existsSync(join(ROOT, '.git')), 'not a git repository yet (stage 4, Marcos\'s hands)');
 });
 
 test('the texts are approved (Marcos, 30 October 2026): no file of the repository carries a DRAFT line', () => {

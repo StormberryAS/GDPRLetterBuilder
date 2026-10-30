@@ -9,7 +9,8 @@ name: Android release
 # gdprletterbuilder-v<version>.apk, and its certificate: the release key exists (created on
 # 30 October 2026), and EXPECTED_CERT below holds its certificate's SHA-256.
 #
-# IT HAS NOT RUN: the repository is not on GitHub yet (stage 4, Marcos's hands).
+# IT HAS NOT RUN: the repository is on GitHub (main since 30 October 2026), but no android-v* tag
+# exists yet.
 #
 # Tagged android-v* only, and nothing else starts it: there is no manual run, so no branch can
 # ever reach the signing secrets. The repository will also serve the website gdpr.stormberry.as
@@ -261,10 +262,16 @@ jobs:
           echo "Verified: not debuggable."
 
           # A tag must match the version inside the APK, or the release would publish a misnamed
-          # binary that Zapstore cannot offer as an update.
+          # binary that Zapstore cannot offer as an update. The package must be the sovereign one:
+          # this workflow never builds the Google Play edition (no.stormberry.gdprletterbuilder.play,
+          # a bundle built and signed with the Play upload key on Marcos's own machine), and an APK
+          # of it must never be signed with the release key or published here.
           VERSION_NAME=$(printf '%s\n' "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -1)
           VERSION_CODE=$(printf '%s\n' "$BADGING" | sed -n "s/.*versionCode='\([^']*\)'.*/\1/p" | head -1)
-          echo "APK versionName $VERSION_NAME, versionCode $VERSION_CODE"
+          PACKAGE=$(printf '%s\n' "$BADGING" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)
+          echo "APK $PACKAGE versionName $VERSION_NAME, versionCode $VERSION_CODE"
+          [ "$PACKAGE" = no.stormberry.gdprletterbuilder ] || { echo "::error::the APK is $PACKAGE, not no.stormberry.gdprletterbuilder"; exit 1; }
+          [ "$VERSION_CODE" -lt 1000 ] || { echo "::error::versionCode $VERSION_CODE is in the Google Play range (1000 and above)"; exit 1; }
           if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
             if [ "v$VERSION_NAME" != "${GITHUB_REF_NAME#android-}" ]; then
               echo "::error::tag $GITHUB_REF_NAME does not match the APK's versionName $VERSION_NAME; bump versionName and versionCode in android/app/build.gradle.kts"

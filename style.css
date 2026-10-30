@@ -989,19 +989,25 @@ dialog.confirm[open] {
 
 dialog.confirm p { color: var(--text-secondary); }
 
-/* The printed letter (OUT-4) */
+/* The printed letter (OUT-4, Save as PDF)
+   The page margin is 0, so a browser has no room for its own header and footer (the page title,
+   the address, the date). Chromium leaves them out when the margin has no room for them, and
+   Firefox draws a header or footer only when its line fits inside the page's margin
+   (nsPageFrame::DrawHeaderFooter; Mozilla bugs 1250674 and 1672529). The letter's margins are its
+   padding instead, and box-decoration-break: clone repeats that padding on every page the letter
+   runs onto: 20 mm at the sides and top, 22 mm at the bottom, on A4. A zero margin has no room for
+   a page counter either, so the web print has none (the Android app draws its own page numbers).
+   WebKit (Safari, and every browser on iOS) clones the padding only on inline boxes, so a letter
+   of two pages or more would run to the paper's edge where it breaks. There, and in any browser
+   without box-decoration-break: clone, the page keeps the 20 mm and 22 mm margins as before and the
+   letter has no padding; that browser's own header and footer setting then applies, as before
+   30 October 2026. font: -apple-system-body is known only to Apple's WebKit. */
 .print-letter { display: none; }
 
 @media print {
   @page {
     size: A4;
-    margin: 20mm 20mm 22mm;
-    @bottom-center {
-      content: "Page " counter(page) " of " counter(pages);
-      font-family: 'InterVariable', sans-serif;
-      font-size: 8.5pt;
-      color: #444;
-    }
+    margin: 0;
   }
 
   html, body {
@@ -1010,12 +1016,17 @@ dialog.confirm p { color: var(--text-secondary); }
     color: #000 !important;
     min-height: 0;
     display: block;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   body > :not(.print-letter) { display: none !important; }
 
   .print-letter {
     display: block !important;
+    margin: 0;
+    padding: 20mm 20mm 22mm;
+    box-decoration-break: clone;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: #000;
@@ -1023,6 +1034,11 @@ dialog.confirm p { color: var(--text-secondary); }
     font-family: 'InterVariable', sans-serif;
     font-size: 11pt;
     line-height: 1.45;
+  }
+
+  @supports (not (box-decoration-break: clone)) or (font: -apple-system-body) {
+    @page { margin: 20mm 20mm 22mm; }
+    .print-letter { padding: 0; }
   }
 }
 

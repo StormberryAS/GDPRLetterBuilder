@@ -188,7 +188,7 @@ test('privacy.html covers spec section 9: on the device, the outputs, the remind
     'Stormberry AS', 'organisation number NO 937 751 249', 'info@stormberry.as',
     'Nothing you type is sent anywhere, to us or to anyone else', 'there is no company search and no address lookup',
     'blocks every connection its code could open and every form submission', 'disconnect from the internet and use it',
-    'Copy letter', 'clipboard history', 'Open email app', 'nothing is sent until you press Send there', 'Print or save as PDF',
+    'Copy letter', 'clipboard history', 'Send using email app', 'nothing is sent until you press Send there', 'with that address as Cc', 'Save as PDF',
     'Save as text file', 'never after the company', 'Share',
     'Save a reminder', 'It never holds your name, your contact details, the details that help the company find you, or your letter',
     'keeps nothing you type, and no history', 'Reloading or closing the page empties every field',
@@ -199,7 +199,7 @@ test('privacy.html covers spec section 9: on the device, the outputs, the remind
     'EUR-Lex, Lovdata', 'open in a new tab only when you press them', 'GitHub (GitHub Pages) and delivered through Cloudflare',
     'They never see what you type', 'Norwegian Data Protection Authority (Datatilsynet', 'Norwegian Personal Data Act (personopplysningsloven)',
     'a follow-up letter and the cover note', '"follow-up" or "timeline"', 'no history of letters, follow-ups, events or companies',
-    'Last updated: 29 October 2026',
+    'Last updated: 30 October 2026',
   ]) assert.ok(text.includes(part), `privacy.html does not say: ${part}`);
   assert.deepEqual(copyProblems(text), []);
 });
@@ -260,6 +260,8 @@ test('README.md: information, not legal advice; the 0.0.1 status and the pinned 
   assert.ok(md.startsWith('# GDPRLetterBuilder\n\n**Information, not legal advice.**'));
   assert.match(md, /\*\*0\.0\.1, the first release, 30 October 2026\.\*\* The web app is at \[gdpr\.stormberry\.as\]\(https:\/\/gdpr\.stormberry\.as\)/);
   assert.match(md, /\*\*Signing certificate SHA-256:\*\* `8287710abd10fc1d37615299bd11c3e79306545ecc3e1b968010da54a80424e2`/);
-  assert.ok(!/not created yet|Google Play/i.test(md));
+  assert.ok(!/not created yet/i.test(md));
+  // The Google Play edition (30 October 2026): named as a separate package, built from the same source.
+  assert.match(md, /\n### Google Play edition\n\nThe same source also builds a Google Play edition, a separate package, `no\.stormberry\.gdprletterbuilder\.play`, with the same features/);
   assert.ok(read('CNAME') === 'gdpr.stormberry.as\n');
 });

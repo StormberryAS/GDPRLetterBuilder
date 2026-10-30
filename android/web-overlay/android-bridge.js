@@ -58,7 +58,7 @@
     var CALENDAR_FAILED = 'No calendar app opened. Save the reminder instead, and open the file in your calendar.';
     var TOO_LONG = 'This is too long for the app to hand over. Shorten it and try again.';
     var SAVE_FAILED = 'The file could not be saved. Try Save again.';
-    var COPIED = 'Copied.';
+    var PRINT_SCREEN = 'On the Android print screen, choose Save as PDF as the printer.';
     var CLOSE_QUESTION = 'Close the app? What you have typed will be lost.';
     var CLOSE_LABEL = 'Close';
     function TooLong() { }
@@ -307,7 +307,12 @@
                 tell(lastStatus, TOO_LONG);
             return;
         }
-        ask({ t: 'print', text: text, kind: printKind(text) });
+        var status = lastStatus;
+        tell(status, PRINT_SCREEN);
+        ask({ t: 'print', text: text, kind: printKind(text) }).then(function (answer) {
+            if (answer.ok !== true && status && status.textContent === PRINT_SCREEN)
+                status.textContent = '';
+        });
     }
     Object.defineProperty(window, 'print', { value: print, writable: false, configurable: false, enumerable: false });
     var OUTPUT_BOXES = ['letter', 'fu-letter', 'tl-text'];
@@ -411,7 +416,7 @@
         }
         if (msg.t === 'no-email-app') {
             if (emailStatus)
-                emailStatus.textContent = emailStatus.textContent.indexOf(COPIED) === 0 ? COPIED : '';
+                emailStatus.textContent = '';
             return;
         }
         if (msg.t !== 'reply')
