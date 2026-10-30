@@ -264,9 +264,9 @@ test('the bridge hooks exactly what the page uses, and the page never names the 
   for (const id of ['out-status', 'ics-status', 'ext-status', 'fu-status', 'tl-status']) {
     assert.match(html, new RegExp(`</div>\\s*<p class="status" id="${id}"></p>`), id);
   }
-  // The website-only section stays hidden on the website until the app is on Zapstore (stage 5),
-  // and the bridge hides it in the app whatever happens to that attribute.
-  assert.match(html, /<section class="android-app" id="android-app" aria-labelledby="android-app-title" data-web-only hidden>/);
+  // The website-only section shows on the website since 0.0.1 is on Zapstore (2026-10-30); the
+  // bridge hides it in the app whatever happens to that attribute.
+  assert.match(html, /<section class="android-app" id="android-app" aria-labelledby="android-app-title" data-web-only>/);
   assert.match(html, /href="https:\/\/zapstore\.dev\/apps\/no\.stormberry\.gdprletterbuilder"/);
   assert.match(html, /No permissions and no internet access\./);
   // The build injects the bridge before the first script; the page itself must not name it.
