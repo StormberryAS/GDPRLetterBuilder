@@ -1,0 +1,22 @@
+Eksempel Handel AS
+
+1 December 2026
+
+Subject: Follow-up: request for access to my personal data (GDPR Article 15)
+
+Dear Sir or Madam,
+
+I refer to my request of 12 October 2026 for access to my personal data under Article 15 of the General Data Protection Regulation (GDPR), and to your message of 10 November 2026, in which you asked me for a copy of an identity document before answering my request.
+
+Under Article 12(6), you may ask for additional information only where you have reasonable doubts concerning my identity, and only the information necessary to confirm it.
+
+I sent my request from the email address I use with you. You can confirm that it is me by sending a confirmation link or code to that address.
+
+Please explain why the information you ask for is necessary to confirm my identity, or answer my request on the basis of the details I have already given.
+
+Please reply to kari.nordmann@example.no.
+
+Yours faithfully,
+
+Kari Nordmann
+kari.nordmann@example.no

@@ -1,0 +1,26 @@
+Eksempel Handel AS
+
+12 October 2026
+
+Subject: Request for erasure of my personal data (GDPR Article 17)
+
+Dear Sir or Madam,
+
+Under Article 17 of the General Data Protection Regulation (GDPR), I ask you to erase, without undue delay, all the personal data you hold about me.
+
+Please tell each recipient to whom you have disclosed my personal data about the erasure, and tell me who those recipients are (Article 19).
+
+If you do not erase some or all of the personal data this request covers, for example because you consider that an exception in Article 17(3) applies, please tell me which data you keep, what you rely on and why (Article 12(4)).
+
+If you have reasonable doubts about my identity, please tell me what additional information is necessary to confirm it (Article 12(6)).
+
+Please confirm that you have received this request, and tell me in writing what you have done. Under Article 12(3), you must give me information on the action taken on this request without undue delay and in any event within one month of receipt of the request. That period may be extended by two further months only where necessary, taking into account the complexity and number of the requests, and you must tell me of any extension, with the reasons for the delay, within one month of receipt.
+
+If you decide not to act on all or part of this request, please tell me your reasons without delay and at the latest within one month of receipt, together with information on the possibility of lodging a complaint with a supervisory authority and seeking a judicial remedy (Article 12(4)).
+
+Please reply to kari.nordmann@example.no.
+
+Yours faithfully,
+
+Kari Nordmann
+kari.nordmann@example.no

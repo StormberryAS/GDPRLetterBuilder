@@ -1,0 +1,25 @@
+GDPRLetterBuilder fills in a letter asking a company to show you the personal data it holds about you (an access request, GDPR Article 15) or to erase it (an erasure request, GDPR Article 17), in English or in Norwegian (Bokmål). It counts the company's deadline, hands a reminder to your own calendar, and explains what you can do if they do not answer, or not fully, including how to complain to the Norwegian Data Protection Authority (Datatilsynet).
+
+Information, not legal advice. It sends nothing: you read the letter, change what you need and send it yourself.
+
+- What do you want? See what they hold, or have it deleted.
+- Who you are writing to, and about you. The company, how you will send it, and your own details. A warning shows if you type something that looks like a Norwegian national identity number or a payment card number. It warns and never blocks.
+- Your letter, live, in English or Bokmål. You can edit it before you send it.
+- Send it yourself. Copy it, open a draft in your email app, print it or save it as a PDF, save it as a text file, or share it.
+- Remember the deadline. One month from receipt, counted the way the European Data Protection Board describes, with weekends and Norwegian public holidays rolled over. Save a reminder file, or press Add to calendar app to hand the reminder to your calendar app. It holds the deadline and, unless you leave it out, the company's name; never your details.
+- If they do not answer, or not fully: what the law says, a follow-up letter, and a cover note with a dated timeline for a complaint to Datatilsynet.
+- Every source the letters rely on, and the date they were checked.
+
+No permissions and no internet access. The app asks for no Android permission at all, so it cannot send anything anywhere. Your letter leaves only when you press a button: to the clipboard, your email app, the printer, Android's save screen or the app you share it with. Check it yourself before installing:
+
+    aapt dump permissions <the APK you downloaded>
+
+The only line you should see is the package name.
+
+It keeps nothing you type, and no history of letters or companies. Closing the app empties every field. The only thing it stores is that you closed the first-run notice.
+
+The app runs GDPRLetterBuilder's web page from inside the APK, offline. The build checks that every bundled file is byte for byte the one in the source repository, apart from one added line in index.html for the bridge to Android. The app is in English; the letters are in English and Bokmål.
+
+The privacy page and the full disclaimer open from the app's footer.
+
+This is a functioning prototype from Stormberry AS, MIT licensed, so expect gaps and changes.

@@ -1,0 +1,21 @@
+# Local and generated files that must never be published.
+node_modules/
+# tools/build-ts.sh's record of what it last wrote, until the repository is under git (then it
+# lives in the git directory).
+.build-ts.last
+__pycache__/
+*.pyc
+*.bak*
+.DS_Store
+# Signing material and machine-local Android files, wherever they land in the repo.
+# android/.gitignore covers the Gradle tree; these catch a key dropped anywhere else.
+*.p12
+*.jks
+*.keystore
+keystore.properties
+local.properties
+# zsp (the Zapstore publisher) offers to save SIGN_WITH, the publishing key, into .env in the
+# repository root. It must never be committed (as in MoonApp, SunApp and UsernameGenerator).
+.env
+.env.*
+!.env.example

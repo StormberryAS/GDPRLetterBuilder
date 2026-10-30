@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive-icon foreground for GDPRLetterBuilder (ICON-1, draft C, "Data about you"),
+  drawn from android/tools/launcher-icon.svg (64 x 64) by android/tools/make_icons.py. The
+  mark is scaled and centred on its own bounding box so that every point of it stays
+  inside the 66 unit safe zone that launchers never crop. Edit the script, not this file.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.9552"
+        android:scaleY="0.9552"
+        android:translateX="23.43"
+        android:translateY="21.28">
+        <!-- launcher-icon.svg, shape for shape, in its order: the envelope, its flap, the light
+             disc, the person's head and shoulders. -->
+        <path
+            android:fillColor="#FF103033"
+            android:strokeWidth="3"
+            android:pathData="M11,14 H53 A5,5 0 0,1 58,19 V47 A5,5 0 0,1 53,52 H11 A5,5 0 0,1 6,47 V19 A5,5 0 0,1 11,14 Z">
+            <aapt:attr name="android:strokeColor">
+                <gradient android:type="linear" android:startX="6" android:startY="14" android:endX="58" android:endY="52">
+                    <item android:offset="0" android:color="#FF5EEAD4" />
+                    <item android:offset="1" android:color="#FF14B8A6" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M8,17 L32,35 L56,17">
+            <aapt:attr name="android:strokeColor">
+                <gradient android:type="linear" android:startX="6" android:startY="14" android:endX="58" android:endY="52">
+                    <item android:offset="0" android:color="#FF5EEAD4" />
+                    <item android:offset="1" android:color="#FF14B8A6" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path
+            android:fillColor="#FFECFDFA"
+            android:pathData="M35,44 A12,12 0 1,0 59,44 A12,12 0 1,0 35,44 Z" />
+        <path
+            android:fillColor="#FF0F766E"
+            android:pathData="M43.4,40.5 A3.6,3.6 0 1,0 50.6,40.5 A3.6,3.6 0 1,0 43.4,40.5 Z" />
+        <path
+            android:fillColor="#FF0F766E"
+            android:pathData="M40.5,51.5 A6.5,6 0 0,1 53.5,51.5 Z" />
+    </group>
+</vector>

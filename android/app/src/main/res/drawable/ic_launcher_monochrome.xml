@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Themed-icon layer (Android 13 and later). The launcher tints it with one colour and only
+  reads its alpha, so it is the outline of the envelope and its flap, and the disc with the
+  person cut out, without the dark fill that would otherwise turn the envelope solid.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.9552"
+        android:scaleY="0.9552"
+        android:translateX="23.43"
+        android:translateY="21.28">
+        <!-- One colour, read by its alpha only: the envelope's outline and flap, and the disc
+             with the person cut out of it (even-odd fill), so the person stays visible. -->
+        <path
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="3"
+            android:pathData="M11,14 H53 A5,5 0 0,1 58,19 V47 A5,5 0 0,1 53,52 H11 A5,5 0 0,1 6,47 V19 A5,5 0 0,1 11,14 Z" />
+        <path
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M8,17 L32,35 L56,17" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M35,44 A12,12 0 1,0 59,44 A12,12 0 1,0 35,44 Z M43.4,40.5 A3.6,3.6 0 1,0 50.6,40.5 A3.6,3.6 0 1,0 43.4,40.5 Z M40.5,51.5 A6.5,6 0 0,1 53.5,51.5 Z" />
+    </group>
+</vector>

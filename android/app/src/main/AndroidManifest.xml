@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      NO PERMISSIONS AT ALL (spec section 14, stage 3; AND-1, approved 16 October 2026).
+
+      There is no INTERNET permission, so the WebView cannot reach the network at all, whatever
+      the page tried; the page's own policy (connect-src 'none') forbids it as well. Everything
+      that leaves the device goes through another app the person chooses, on a press: the
+      clipboard, the share sheet, Android's save screen (Storage Access Framework, which hands
+      over a one-off grant for the file the person picks, so no storage permission is needed),
+      the calendar app (an insert intent: the calendar app writes the event, so no calendar
+      permission is needed), the print screen and the email app (a mailto: link).
+
+      The removals below strip permissions back out if any dependency ever merges them in.
+      expected-permissions.txt holds exactly what `aapt dump permissions` must print: the
+      package line and nothing else. tests/android-app.test.ts and the Gradle task
+      checkMergedManifest hold the app to it.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" tools:node="remove" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" tools:node="remove" />
+
+    <!--
+      androidx.core declares a private signature permission for its registerReceiver
+      compatibility shim. It grants nothing to anyone but this app, yet it still shows up in
+      `aapt dump permissions`. This app registers no broadcast receivers at all, so both
+      halves of it are removed.
+    -->
+    <permission
+        android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        tools:node="remove" />
+    <uses-permission
+        android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        tools:node="remove" />
+
+    <!--
+      The calendar insert intent (Add to calendar app) and the email app (mailto:) are started
+      with startActivity, which on Android 11 and later needs no package-visibility declaration;
+      the app never asks which apps are installed.
+    -->
+
+    <!--
+      NO BACKUP. allowBackup="false" disables cloud and adb backup; both rule files exclude
+      everything as well, because device-to-device transfer is not governed by allowBackup.
+    -->
+    <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.GDPRLetterBuilder">
+
+        <!-- The WebView must not report usage metrics to Google. -->
+        <meta-data
+            android:name="android.webkit.WebView.MetricsOptOut"
+            android:value="true" />
+        <!--
+          Safe Browsing checks URLs against Google's lists, which means sending lookups off
+          the device. The WebView here can only load the bundled page and has no network
+          access, so the check has nothing to protect and is switched off.
+        -->
+        <meta-data
+            android:name="android.webkit.WebView.EnableSafeBrowsing"
+            android:value="false" />
+
+        <!--
+          configChanges keeps the activity, and with it the WebView and the letter being
+          written, alive across rotation, resizing, keyboard, dark-mode, language, text-size,
+          bold-text, grammatical-gender and SIM or network-country (mcc, mnc) changes. Recreating it
+          would reload the page and empty every field. A text-size change is passed on to the
+          WebView in MainActivity.onConfigurationChanged.
+
+          taskAffinity="" with autoRemoveFromRecents="true", as CheckLink (SEC-8, option A of
+          12 October 2026): with no affinity, no other app can slip a screen of its own into this
+          app's task in Recents (task hijacking by affinity, StrandHogg 1.0, on older Android),
+          and Back, which ends the app, also takes its card out of Recents, so no picture of a
+          letter is left there once the person has closed it. singleTask keeps one task.
+
+          The only intent filter is the launcher's: the app takes nothing in from other apps.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:autoRemoveFromRecents="true"
+            android:configChanges="mcc|mnc|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|locale|layoutDirection|fontWeightAdjustment|grammaticalGender|colorMode|touchscreen"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.GDPRLetterBuilder">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          androidx.profileinstaller adds an exported receiver for adb and benchmarking tools.
+          It is guarded by the DUMP permission, so no ordinary app could reach it, but it is
+          not needed either: the startup initialiser still installs the baseline profile.
+          Removing it keeps the exported surface to the launcher. Lint's MissingClass check
+          looks at this source file, where the class name is only a removal marker, so it is
+          silenced for this one element.
+        -->
+        <receiver
+            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+            tools:ignore="MissingClass"
+            tools:node="remove" />
+    </application>
+
+</manifest>

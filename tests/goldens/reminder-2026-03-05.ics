@@ -1,0 +1,34 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Stormberry AS//GDPRLetterBuilder 0.0.1//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:0123456789abcdef0123456789abcdef@stormberry.as
+DTSTAMP:20261012T103000Z
+DTSTART:20260408T120000
+DTEND:20260408T123000
+SUMMARY:Follow up: Eksempel Handel AS GDPR request (deadline 7 April 2026)
+DESCRIPTION:Deadline: by the end of Tuesday 7 April 2026\, counted from the
+  date you gave for when they received it.\nOne month after they received i
+ t (5 March 2026) is 5 April.\nThat is Easter Sunday\, and 6 April is Easte
+ r Monday\, so the deadline moves to the next working day.\nIf they extend 
+ it\, which they may do only where necessary\, and only if they tell you wi
+ thin the first month and give reasons: by the end of Monday 8 June 2026. T
+ he law does not say exactly how the extra two months are counted\, so this
+  is the later reading.\n\nWhat to do next:\n1. Check whether they have ans
+ wered\, or told you within the first month that they need more time.\n2. I
+ f not\, you may send a short reminder with your first letter attached.\n3.
+  You can complain to the Norwegian Data Protection Authority (Datatilsynet
+ ). Keep your letter\, proof of when it reached them and every reply.\n\nMa
+ de with GDPRLetterBuilder by Stormberry AS. Information\, not legal advice
+ .
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Follow up: Eksempel Handel AS GDPR request (deadline 7 April 20
+ 26)
+TRIGGER:-PT0M
+END:VALARM
+END:VEVENT
+END:VCALENDAR

@@ -1,0 +1,118 @@
+# Zapstore publishing manifest (https://zapstore.dev/docs/publish), modelled on CheckLink's
+# (released 0.0.1 on 15 October 2026).
+#
+# `pubkey` is load-bearing, not decoration: on a first publish the Zapstore relay
+# fetches this file from the repository and whitelists the key it finds here, so
+# it must stay identical to the key `zsp` signs with (SIGN_WITH). It is the
+# Stormberry AS nostr identity, the same one behind nostr.json at stormberry.as and
+# in CheckLink's and EclipseTracker's zapstore.yaml. Derive the npub from the
+# signing key and compare before the first publish.
+#
+# Publish a release with the config file, and only once the release workflow has
+# finished and the GitHub release exists (zsp takes whatever release is there):
+#   SIGN_WITH=<nsec|bunker://...> zsp publish zapstore.yaml
+# Not `zsp publish -r ...`: that reads the repository instead of this file and
+# drops the tags, the licence and the website.
+repository: https://github.com/StormberryAS/GDPRLetterBuilder
+pubkey: npub1zz9w77p2jkn95t0st9tcuea8zdn2vknf0ctrwyd4g46w3kswdccqesr0pa
+
+name: GDPRLetterBuilder
+summary: "A GDPR letter asking a company for your data, or to erase it. Sends nothing."
+description: |
+  GDPRLetterBuilder fills in a letter asking a company to show you the personal
+  data it holds about you (an access request, GDPR Article 15) or to erase it (an
+  erasure request, GDPR Article 17), in English or in Norwegian (Bokmål). It
+  counts the company's deadline, hands a reminder to your own calendar, and
+  explains what you can do if they do not answer, or not fully, including how to
+  complain to the Norwegian Data Protection Authority (Datatilsynet).
+
+  Information, not legal advice. It sends nothing: you read the letter, change
+  what you need and send it yourself.
+
+  - What do you want? See what they hold, or have it deleted.
+  - Who you are writing to, and about you. The company, how you will send it,
+    and your own details. A warning shows if you type something that looks like
+    a Norwegian national identity number or a payment card number. It warns and
+    never blocks.
+  - Your letter, live, in English or Bokmål. You can edit it before you send it.
+  - Send it yourself. Copy it, open a draft in your email app, print it or save
+    it as a PDF, save it as a text file, or share it.
+  - Remember the deadline. One month from receipt, counted the way the European
+    Data Protection Board describes, with weekends and Norwegian public holidays
+    rolled over. Save a reminder file, or press Add to calendar app to hand the
+    reminder to your calendar app. It holds the deadline and, unless you leave
+    it out, the company's name; never your details.
+  - If they do not answer, or not fully: what the law says, a follow-up letter,
+    and a cover note with a dated timeline for a complaint to Datatilsynet.
+  - Every source the letters rely on, and the date they were checked.
+
+  No permissions and no internet access. The app asks for no Android permission
+  at all, so it cannot send anything anywhere. Your letter leaves only when you
+  press a button: to the clipboard, your email app, the printer, Android's save
+  screen or the app you share it with. Check it yourself before installing:
+
+      aapt dump permissions <the APK you downloaded>
+
+  The only line you should see is the package name.
+
+  It keeps nothing you type, and no history of letters or companies. Closing the
+  app empties every field. The only thing it stores is that you closed the
+  first-run notice.
+
+  The app runs GDPRLetterBuilder's web page from inside the APK, offline. The
+  build checks that every bundled file is byte for byte the one in the source
+  repository, apart from one added line in index.html for the bridge to Android.
+  The app is in English; the letters are in English and Bokmål.
+
+  The privacy page and the full disclaimer open from the app's footer.
+
+  This is a functioning prototype from Stormberry AS, MIT licensed, so expect
+  gaps and changes.
+
+tags:
+  - privacy
+  - gdpr
+  - letters
+  - offline
+  - data-protection
+
+license: MIT
+
+# The publisher's own site. GDPRLetterBuilder's web version, gdpr.stormberry.as, has
+# no DNS record yet (29 October 2026, stage 4 is Marcos's), so naming it here would
+# send people to an address that does not answer. Point this at
+# https://gdpr.stormberry.as once that site is live, as CheckLink did.
+website: https://stormberry.as
+
+# The release text Zapstore shows for this version. Without this line zsp takes the
+# GitHub release body, which the workflow leaves to GitHub's generated notes. A plain
+# text file is used whole. Point it at the changelog of the versionCode being
+# released, and change the number at every release (0.0.1 is versionCode 1).
+release_notes: ./fastlane/metadata/android/en-US/changelogs/1.txt
+
+# The APK ships no raster icon (the launcher icon is an adaptive-icon XML built
+# from vectors), and a store front-end without a bitmap shows an empty tile. So
+# the icon is supplied here, rendered by android/tools/build-store-icon.py from
+# android/tools/launcher-icon.svg (ICON-1, draft C) with the launcher's own scale
+# and offset.
+icon: ./fastlane/metadata/android/en-US/images/icon.png
+
+# Phone screenshots of the stage tree's app (the debug build: the same bundled page
+# as the release APK) on an Android 16 emulator at 1080x1920, with a made-up company
+# and person (Eksempel Handel AS, Kari Nordmann, example.com addresses), as 256-colour
+# palette PNGs under 250 KB (Zapstore's Blossom server refuses images of about 700 KB).
+# zsp uploads these to Blossom and references them from the app event.
+images:
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/01-start.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/02-your-letter.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/03-deadline.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/04-follow-up.png
+
+# No release_source: zsp pulls the APK straight from the GitHub release, so the
+# asset URL in the nostr event points at the same signed binary the release page
+# serves and the attestation covers. The release workflow uploads two files,
+# gdprletterbuilder-v<version>.apk and gdprletterbuilder-v<version>.apk.sha256 (the
+# tag android-v0.0.1 gives gdprletterbuilder-v0.0.1.apk). The pattern matches the
+# APK and never the .sha256 file. Keep it in step with
+# .github/workflows/android-release.yml.
+match: "gdprletterbuilder-.*\\.apk$"

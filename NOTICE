@@ -1,0 +1,27 @@
+Third-Party Notices
+===================
+
+Kept out of LICENSE so that GitHub and other licence scanners can detect the
+MIT licence. A LICENSE file with anything appended after the MIT text is
+reported as NOASSERTION, which reads as "unlicensed" to tooling.
+
+GDPRLetterBuilder ships no third-party code: no libraries, no packages, no
+content delivery network. Every script it runs is Stormberry AS's own and is
+published in this repository. The one third-party item it ships is a typeface.
+
+The letters are Stormberry AS's own wording. They quote short phrases from the
+GDPR, from its Norwegian text and from the Norwegian Personal Data Act
+(personopplysningsloven); statutes and official decisions are not protected by
+copyright in Norway (åndsverkloven § 14). No template from a data protection
+authority or another project is copied.
+
+-------------------
+
+Inter (fonts/inter/)
+  Licence:   SIL Open Font License 1.1 (OFL-1.1)
+  Author:    Rasmus Andersson
+  Source:    https://rsms.me/inter/
+  Copyright (c) 2016 The Inter Project Authors
+
+  This Font Software is licensed under the SIL Open Font License, Version 1.1.
+  Full licence text: licences/Inter-OFL-1.1.txt, and https://scripts.sil.org/OFL

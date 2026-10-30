@@ -1,0 +1,37 @@
+Eksempel Handel AS
+For the attention of the Data Protection Officer
+
+12 October 2026
+
+Subject: Request for access to my personal data (GDPR Article 15)
+
+Dear Data Protection Officer,
+
+I am asking for access to my personal data under Article 15 of the General Data Protection Regulation (GDPR).
+
+Please confirm whether you process personal data about me. If you do, please give me:
+
+1. a copy of all the personal data you hold about me (Article 15(3));
+2. the purposes of the processing;
+3. the categories of personal data concerned;
+4. the recipients to whom my personal data have been or will be disclosed, named individually (Court of Justice of the European Union, case C-154/21), including any recipients outside the EEA and any international organisations;
+5. how long you plan to store the data or, if that is not possible, the criteria you use to decide;
+6. where the data were not collected from me, any available information about their source;
+7. whether you make automated decisions about me, including profiling, of the kind referred to in Article 22(1) and (4), and if so, meaningful information about the logic involved and about the significance and the envisaged consequences for me;
+8. if my data are transferred outside the EEA or to an international organisation, the safeguards that apply to the transfer (Article 15(2));
+9. information about my rights to ask for rectification or erasure, to ask for restriction of processing and to object to processing, and about my right to complain to a supervisory authority.
+
+Please send the copy in a commonly used electronic form (Article 15(3)).
+
+If you have reasonable doubts about my identity, please tell me what additional information is necessary to confirm it (Article 12(6)).
+
+Please confirm that you have received this request. Under Article 12(3), you must give me information on the action taken on this request without undue delay and in any event within one month of receipt of the request. That period may be extended by two further months only where necessary, taking into account the complexity and number of the requests, and you must tell me of any extension, with the reasons for the delay, within one month of receipt.
+
+If you decide not to act on all or part of this request, please tell me your reasons without delay and at the latest within one month of receipt, together with information on the possibility of lodging a complaint with a supervisory authority and seeking a judicial remedy (Article 12(4)).
+
+Please reply to kari.nordmann@example.no.
+
+Yours faithfully,
+
+Kari Nordmann
+kari.nordmann@example.no

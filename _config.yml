@@ -1,0 +1,47 @@
+# GitHub Pages serves gdpr.stormberry.as from this repository root (once it is published: stage 4,
+# Marcos's hands).
+#
+# Without this file Jekyll publishes the WHOLE repository, so the tooling scripts, the README and
+# the licence would all be reachable from the live site. Same rules as the estate-wide sweep of
+# 2026-09-05.
+#
+# Jekyll's `exclude` REPLACES its defaults rather than adding to them, which is why node_modules/
+# is listed. The shipped app has no dependencies, and the test runner is Node's own.
+#
+# TypeScript (29 October 2026): the page's code is written in ts/ and compiled by tools/build-ts.sh
+# into app.js and src/*.js, which ARE published (GitHub Pages has no build step, so the compiled
+# files are committed). The sources (ts/), the compiler's settings (tsconfig.json,
+# tsconfig.src.json), the package files and .npmrc, and node_modules/, where npm ci puts TypeScript,
+# are excluded. (.npmrc, .gitattributes and .build-ts.last are dot files, which Jekyll never
+# publishes; .npmrc is listed anyway, as in EclipseTracker.)
+#
+# src/ is NOT excluded: app.js imports the letters, the deadline, the calendar file, the email link
+# and the warnings from src/ at runtime.
+#
+# privacy.html, disclaimer.html with its disclaimer.css, gate.js and gate.css are NOT excluded: the
+# footer links to the two pages, which the first-run notice (gate.js) links to as well. og-image.png
+# is published for link previews, licences/ for the typeface's licence. DISCLAIMER.md IS excluded:
+# it is the source build-disclaimers.py renders into disclaimer.html, and nothing on the site links
+# to it.
+#
+# android/ holds the Android app (stage 3), and fastlane/ and zapstore.yaml will hold its store
+# files (stage 5). The app bundles the web files from this root at build time; nothing in those
+# folders is part of the website. (.github/ needs no entry: Jekyll never publishes dot folders.)
+exclude:
+  - LICENSE
+  - NOTICE
+  - README.md
+  - DISCLAIMER.md
+  - bump_assets.py
+  - tools/
+  - tests/
+  - package.json
+  - package-lock.json
+  - .npmrc
+  - node_modules/
+  - tsconfig.json
+  - tsconfig.src.json
+  - ts/
+  - android/
+  - fastlane/
+  - zapstore.yaml
