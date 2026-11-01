@@ -136,8 +136,9 @@ jobs:
       # stamp is current (bump_assets.py --check; python3 is on the runner). Some unit tests read
       # only the TypeScript source, so they speak for what ships only together with this check.
       # Then the unit tests, among them S-1: the only JavaScript in the repository is that compiled
-      # output and gate.js. The spec and the shared generators are not beside a CI checkout, so
-      # the tests that need them skip, and so does the one that reads a local Android build.
+      # output (gate.js included, compiled from ts/gate.ts since 0.0.2). The spec and the shared
+      # generators are not beside a CI checkout, so the tests that need them skip, and so does the
+      # one that reads a local Android build.
       - name: Check the compiled TypeScript and run the unit tests
         working-directory: .
         run: |

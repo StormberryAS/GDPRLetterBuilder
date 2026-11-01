@@ -74,12 +74,22 @@ test('the store texts: Zapstore\'s and Fastlane\'s lengths, the copy rules, and 
   const full = text(`${FL}/full_description.txt`);
   assert.ok(full.length <= 4000, `full_description ${full.length}`);
   // One new note per release (Marcos, 23 October 2026): for this versionCode, main updates only,
-  // under 500 characters with the link to the full log at its end.
+  // under 500 characters with the link to the full log, CHANGELOG.md (since 0.0.2), at its end.
   const note = text(`${FL}/changelogs/${versionCode()}.txt`).trim();
   assert.ok(note.length < 500, `changelog ${note.length}`);
-  assert.match(note, /Full log: https:\/\/github\.com\/StormberryAS\/GDPRLetterBuilder\/releases$/);
+  assert.match(note, /Full log: https:\/\/github\.com\/StormberryAS\/GDPRLetterBuilder\/blob\/main\/CHANGELOG\.md$/);
   assert.match(note, new RegExp(`\\b${versionName().replace(/\./g, '\\.')}\\b`));
-  assert.deepEqual(readdirSync(join(ROOT, FL, 'changelogs')), [`${versionCode()}.txt`]);
+  // The notes of earlier releases stay, one per versionCode from 1, each kept to the same rules.
+  const notes = readdirSync(join(ROOT, FL, 'changelogs')).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  assert.deepEqual(notes, Array.from({ length: versionCode() }, (_, i) => `${i + 1}.txt`));
+  for (const n of notes) {
+    const t = text(`${FL}/changelogs/${n}`).trim();
+    assert.ok(t.length < 500, `changelogs/${n} ${t.length}`);
+    assert.deepEqual(copyProblems(t), [], n);
+    assert.match(t, /Information, not legal advice\./, n);
+  }
+  // CHANGELOG.md, the full log, has a section for this version.
+  assert.match(read('CHANGELOG.md'), new RegExp(`^## ${versionName().replace(/\./g, '\\.')} \\(versionCode ${versionCode()}\\), \\d{1,2} [A-Z][a-z]+ \\d{4}$`, 'm'));
   for (const [name, t] of [['short', short], ['full', full], ['note', note]] as const) {
     assert.deepEqual(copyProblems(t), [], name);
     assert.ok(!/\bvibe/i.test(t), name);
@@ -221,11 +231,11 @@ test('the Play switch: -PplayBuild=true builds no.stormberry.gdprletterbuilder.p
   assert.ok(versionCode() < 1000, 'the sovereign versionCode stays below the Play offset');
   assert.match(gradle, /^val PLAY_VERSION_CODE_OFFSET = 1000$/m);
   assert.match(gradle, /applicationId = if \(playBuild\) "no\.stormberry\.gdprletterbuilder\.play" else "no\.stormberry\.gdprletterbuilder"/);
-  assert.match(gradle, /versionCode = 1\n {8}versionName = "0\.0\.1"\n {8}if \(playBuild\) \{\n {12}versionCode = PLAY_VERSION_CODE_OFFSET \+ versionCode!!\n {8}\}/);
+  assert.match(gradle, /versionCode = 2\n {8}versionName = "0\.0\.2"\n {8}if \(playBuild\) \{\n {12}versionCode = PLAY_VERSION_CODE_OFFSET \+ versionCode!!\n {8}\}/);
   // Strict parsing: a bare -PplayBuild means Play, anything unknown stops the build.
   assert.match(gradle, /"", "true", "1", "yes" -> true\n\s*"false", "0", "no" -> false\n\s*else -> error\(/);
   assert.match(gradle, /if \(playBuild\) \{\n {4}base \{ archivesName = "gdprletterbuilder-play" \}\n\}/);
-  assert.match(read('README.md'), /\| `android-v0\.0\.1` \| 1 \| 0\.0\.1 \| 1001 \|/);
+  assert.match(read('README.md'), /\| `android-v0\.0\.1` \| 1 \| 0\.0\.1 \| 1001 \|\n\| `android-v0\.0\.2` \| 2 \| 0\.0\.2 \| 1002 \|\n/);
   // The Play edition has the same features: nothing in the app's code or manifest depends on the switch.
   for (const f of walkFiles('android/app/src/main')) assert.ok(!/playBuild|\.play\b/.test(read(f)), `${f} depends on the Play switch`);
 });

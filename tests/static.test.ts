@@ -2,8 +2,8 @@
 // but the generated notice's flag, no form; the page's policy first in head, no inline script or
 // style; outside links that open a new tab do so safely; the published and the excluded files;
 // the stamps; the law date; the manifest of files; and the TypeScript rule (guards S-1, S-2, S-3 of
-// 29 October 2026): the only JavaScript is what tools/build-ts.sh compiles and gate.js, the browser
-// is driven by typed functions, and the tooling is pinned.
+// 29 October 2026): the only JavaScript is what tools/build-ts.sh compiles (gate.js too, since
+// 0.0.2), the browser is driven by typed functions, and the tooling is pinned.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -37,7 +37,7 @@ test('the address bar is never read (PRIV-2), and nothing is stored but the noti
     assert.ok(!/location\.(search|hash|href)|document\.URL|URLSearchParams|document\.referrer/.test(src), `${f} reads the address`);
     assert.ok(!/localStorage|sessionStorage|indexedDB|caches\.|document\.cookie|cookieStore/.test(src), `${f} touches storage`);
   }
-  // gate.js, generated, stores its one flag and nothing else.
+  // gate.js (compiled from ts/gate.ts, which build-gates.py writes) stores its one flag and nothing else.
   const gate = read('gate.js');
   assert.equal([...gate.matchAll(/localStorage\.(\w+)/g)].map((m) => m[1]).sort().join(), 'getItem,setItem');
   assert.ok(!/sessionStorage|indexedDB|document\.cookie/.test(gate));
@@ -110,8 +110,8 @@ test('_config.yml: the repository-only files are excluded, src/ and the legal pa
   const cfg = read('_config.yml');
   const ex = [...cfg.matchAll(/^ {2}- (.+)$/gm)].map((m) => m[1]!);
   // The TypeScript sources and the compiler's files are excluded (29 October 2026); the compiled
-  // app.js and src/*.js are published.
-  assert.deepEqual(ex, ['LICENSE', 'NOTICE', 'README.md', 'DISCLAIMER.md', 'bump_assets.py', 'tools/', 'tests/', 'package.json', 'package-lock.json', '.npmrc', 'node_modules/', 'tsconfig.json', 'tsconfig.src.json', 'ts/', 'android/', 'fastlane/', 'zapstore.yaml']);
+  // app.js, src/*.js and gate.js are published. CHANGELOG.md is a repository file (0.0.2).
+  assert.deepEqual(ex, ['LICENSE', 'NOTICE', 'README.md', 'CHANGELOG.md', 'DISCLAIMER.md', 'bump_assets.py', 'tools/', 'tests/', 'package.json', 'package-lock.json', '.npmrc', 'node_modules/', 'tsconfig.json', 'tsconfig.src.json', 'ts/', 'android/', 'fastlane/', 'zapstore.yaml']);
   for (const gone of ['jsconfig.json', 'types/']) assert.ok(!ex.includes(gone), `${gone} no longer exists`);
   for (const kept of ['src', 'privacy.html', 'disclaimer.html', 'disclaimer.css', 'gate.js', 'gate.css', 'og-image.png', 'licences', 'fonts', 'switcher-icons', 'favicon.svg']) {
     assert.ok(!ex.some((e) => e.replace(/\/$/, '') === kept), kept);
@@ -189,7 +189,7 @@ test('the favicon is ICON-1 draft C, the launcher\'s drawing, with no tick, scal
 // --out folders outside it, the Android build's to the folders android/.gitignore names). A new
 // file must be added here on purpose.
 const MANIFEST = [
-  '.gitignore', 'CNAME', 'DISCLAIMER.md', 'LICENSE', 'NOTICE', 'README.md', '_config.yml', 'app.js', 'bump_assets.py',
+  '.gitignore', 'CHANGELOG.md', 'CNAME', 'DISCLAIMER.md', 'LICENSE', 'NOTICE', 'README.md', '_config.yml', 'app.js', 'bump_assets.py',
   'apple-touch-icon.png', 'disclaimer.css', 'disclaimer.html', 'favicon.svg', 'gate.css', 'gate.js', 'index.html', 'licences/Inter-OFL-1.1.txt',
   'og-image.png', 'privacy.html', 'robots.txt', 'style.css',
   'src/citations.js', 'src/deadline.js', 'src/followups.js', 'src/format.js', 'src/holidays-no.js', 'src/ics.js', 'src/letters.js', 'src/mailto.js', 'src/personal-data.js', 'src/timeline.js',
@@ -197,10 +197,10 @@ const MANIFEST = [
   'tests/helpers.ts', 'tests/legal-pages.ts', 'tests/letters.test.ts', 'tests/librewolf-smoke.ts', 'tests/mailto.test.ts', 'tests/personal-data.test.ts',
   'tests/release.test.ts', 'tests/serve.py', 'tests/share-stub.ts', 'tests/spec-wording.test.ts', 'tests/static.test.ts', 'tests/timeline.test.ts', 'tests/ui-smoke.ts',
   'tests/update-goldens.ts', 'tests/goldens/reminder-2026-03-05.ics', 'tests/android-app.test.ts', 'tests/app-mode-smoke.ts', 'tests/tsconfig.json',
-  // TypeScript (29 October 2026): the sources in ts/ (compiled to app.js and src/*.js above, and the
-  // bridge below), the compiler's settings, the pinned tooling and the build script. None of them
-  // is published (_config.yml) or bundled (android/app/build.gradle.kts).
-  'ts/app.ts', 'ts/page.d.ts', 'ts/pure.d.ts', 'ts/src/citations.ts', 'ts/src/deadline.ts', 'ts/src/followups.ts', 'ts/src/format.ts', 'ts/src/holidays-no.ts', 'ts/src/ics.ts',
+  // TypeScript (29 October 2026): the sources in ts/ (compiled to app.js, src/*.js and, since 0.0.2,
+  // gate.js above, and the bridge below), the compiler's settings, the pinned tooling and the build
+  // script. None of them is published (_config.yml) or bundled (android/app/build.gradle.kts).
+  'ts/app.ts', 'ts/gate.ts', 'ts/page.d.ts', 'ts/pure.d.ts', 'ts/src/citations.ts', 'ts/src/deadline.ts', 'ts/src/followups.ts', 'ts/src/format.ts', 'ts/src/holidays-no.ts', 'ts/src/ics.ts',
   'ts/src/letters.ts', 'ts/src/mailto.ts', 'ts/src/personal-data.ts', 'ts/src/timeline.ts',
   'tsconfig.json', 'tsconfig.src.json', 'tools/build-ts.sh', 'package.json', 'package-lock.json', '.npmrc', '.gitattributes',
   // Stage 3: the Android app (spec section 14). android/ is excluded from the website (_config.yml);
@@ -228,6 +228,7 @@ const MANIFEST = [
   '.github/workflows/android-release.yml', 'android/tools/apk-without-signature.ts', 'android/tools/build-store-icon.py', 'tests/store.test.ts',
   'zapstore.yaml', 'fastlane/metadata/android/en-US/title.txt', 'fastlane/metadata/android/en-US/short_description.txt',
   'fastlane/metadata/android/en-US/full_description.txt', 'fastlane/metadata/android/en-US/changelogs/1.txt',
+  'fastlane/metadata/android/en-US/changelogs/2.txt',
   'fastlane/metadata/android/en-US/images/icon.png', 'fastlane/metadata/android/en-US/images/featureGraphic.png',
   'fastlane/metadata/android/en-US/images/phoneScreenshots/01-start.png', 'fastlane/metadata/android/en-US/images/phoneScreenshots/02-your-letter.png',
   'fastlane/metadata/android/en-US/images/phoneScreenshots/03-deadline.png', 'fastlane/metadata/android/en-US/images/phoneScreenshots/04-follow-up.png',
@@ -386,18 +387,18 @@ test('the TypeScript set-up: TypeScript 6.0.3 and @types/node 24.19.2 pinned, st
   for (const f of ['index.html', 'app.js']) assert.ok(!/jsconfig|(?<![\w-])types\/|(?<![\w-])ts\/|tsconfig|node_modules/.test(read(f).replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, '')), f);
 });
 
-// S-1 (29 October 2026): the only JavaScript in the repository is what tools/build-ts.sh compiles
-// from TypeScript (app.js, src/*.js, android/web-overlay/android-bridge.js) and gate.js, which the
-// shared build-gates.py generates and which is exempt; each of them is marked linguist-generated in
-// .gitattributes, so GitHub's language bar counts none of it. A hand-written script anywhere else,
+// S-1 (29 October 2026; no exception since 0.0.2): the only JavaScript in the repository is what
+// tools/build-ts.sh compiles from TypeScript (app.js, src/*.js, gate.js from ts/gate.ts, which the
+// shared build-gates.py writes, and android/web-overlay/android-bridge.js); each of them is marked
+// linguist-generated in .gitattributes, so GitHub's language bar counts none of it. A hand-written script anywhere else,
 // tests and tools included, fails here. Until the repository is under git (stage 4) the files are
 // found by walking the folder (less node_modules/ and the Android build's own folders); in a git
 // checkout, by git, tracked or about to be, as UsernameGenerator does.
-test('the only JavaScript is what the TypeScript compiles to, and gate.js; all of it marked generated (S-1)', () => {
+test('the only JavaScript is what the TypeScript compiles to, gate.js included; all of it marked generated (S-1)', () => {
   const walkTs = (dir: string): string[] => readdirSync(join(ROOT, dir)).flatMap((n) => (statSync(join(ROOT, dir, n)).isDirectory() ? walkTs(`${dir}/${n}`) : [`${dir}/${n}`]));
   const compiled = walkTs('ts').filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts')).map((f) => f.replace(/^ts\//, '').replace(/\.ts$/, '.js'));
-  assert.deepEqual(compiled.sort(), ['app.js', 'src/citations.js', 'src/deadline.js', 'src/followups.js', 'src/format.js', 'src/holidays-no.js', 'src/ics.js', 'src/letters.js', 'src/mailto.js', 'src/personal-data.js', 'src/timeline.js']);
-  const allowed = [...compiled, 'android/web-overlay/android-bridge.js', 'gate.js'].sort();
+  assert.deepEqual(compiled.sort(), ['app.js', 'gate.js', 'src/citations.js', 'src/deadline.js', 'src/followups.js', 'src/format.js', 'src/holidays-no.js', 'src/ics.js', 'src/letters.js', 'src/mailto.js', 'src/personal-data.js', 'src/timeline.js']);
+  const allowed = [...compiled, 'android/web-overlay/android-bridge.js'].sort();
   let js: string[];
   const inGit = existsSync(join(ROOT, '.git'));
   if (inGit) {
@@ -412,7 +413,7 @@ test('the only JavaScript is what the TypeScript compiles to, and gate.js; all o
     });
     js = walk('').filter((f) => /\.(m?js|cjs)$/.test(f));
   }
-  assert.deepEqual(js.sort(), allowed, 'JavaScript in the repository other than the compiled files and gate.js');
+  assert.deepEqual(js.sort(), allowed, 'JavaScript in the repository other than the compiled files');
   // Each one is marked linguist-generated: by git check-attr in a git checkout, else by reading
   // .gitattributes (its patterns here are exact paths and one folder-level *.js).
   const attrs = read('.gitattributes').split('\n').filter((l) => l && !l.startsWith('#')).map((l) => l.split(/\s+/));
@@ -422,8 +423,12 @@ test('the only JavaScript is what the TypeScript compiles to, and gate.js; all o
     const out = spawnSync('git', ['-C', ROOT, 'check-attr', '-z', 'linguist-generated', '--', ...allowed], { encoding: 'utf8' }).stdout.split('\0');
     for (let i = 0; i + 2 < out.length; i += 3) assert.equal(out[i + 2], 'true', `${out[i]} is linguist-generated (git)`);
   }
-  // The README says why gate.js is the one exception.
-  assert.match(read('README.md'), /gate\.js[^\n]*build-gates\.py/);
+  // The README says where gate.js comes from: ts/gate.ts, which build-gates.py writes.
+  assert.match(read('README.md'), /gate\.js[^\n]*ts\/gate\.ts[^\n]*build-gates\.py/);
+  // ts/gate.ts is the generator's output, so it is marked generated too, and the build has no
+  // exception for gate.js any more.
+  assert.ok(marked('ts/gate.ts'), 'ts/gate.ts is linguist-generated in .gitattributes');
+  assert.ok(!/gate\.js \] && continue/.test(read('tools/build-ts.sh')), 'tools/build-ts.sh still exempts gate.js');
 });
 
 // S-2 (29 October 2026, UsernameGenerator's round 2 rule): code that runs in a browser is a typed

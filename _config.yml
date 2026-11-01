@@ -19,10 +19,13 @@
 # and the warnings from src/ at runtime.
 #
 # privacy.html, disclaimer.html with its disclaimer.css, gate.js and gate.css are NOT excluded: the
-# footer links to the two pages, which the first-run notice (gate.js) links to as well. og-image.png
-# is published for link previews, licences/ for the typeface's licence. DISCLAIMER.md IS excluded:
-# it is the source build-disclaimers.py renders into disclaimer.html, and nothing on the site links
-# to it.
+# footer links to the two pages, which the first-run notice (gate.js, compiled from ts/gate.ts since
+# 0.0.2) links to as well. og-image.png is published for link previews, licences/ for the typeface's
+# licence. DISCLAIMER.md IS excluded: it is the source build-disclaimers.py renders into
+# disclaimer.html, and nothing on the site links to it.
+#
+# CHANGELOG.md (0.0.2, 1 November 2026) is the full release log the store notes link to on GitHub.
+# It is a repository file, like README.md, and nothing on the site links to it.
 #
 # android/ holds the Android app (stage 3), and fastlane/ and zapstore.yaml will hold its store
 # files (stage 5). The app bundles the web files from this root at build time; nothing in those
@@ -31,6 +34,7 @@ exclude:
   - LICENSE
   - NOTICE
   - README.md
+  - CHANGELOG.md
   - DISCLAIMER.md
   - bump_assets.py
   - tools/

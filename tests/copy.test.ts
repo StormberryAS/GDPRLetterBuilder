@@ -51,6 +51,8 @@ test('the page, the privacy page and the README: no exclamation marks, British s
   // The README's commands keep their flags (--out, --check): code is left out of the copy rules.
   const readme = read('README.md').replace(/^ {4}.*$/gm, '').replace(/`[^`]*`/g, '');
   assert.deepEqual(copyProblems(readme), []);
+  // CHANGELOG.md (0.0.2), the full log the store notes link to, by the same rules.
+  assert.deepEqual(copyProblems(read('CHANGELOG.md').replace(/`[^`]*`/g, '')), [], 'CHANGELOG.md');
 });
 
 test('the disclaimer\'s own section, the notice, the warnings and the deadline words follow the same rules', () => {

@@ -78,17 +78,15 @@ tags:
 
 license: MIT
 
-# The publisher's own site. GDPRLetterBuilder's web version, gdpr.stormberry.as, has
-# no DNS record yet (29 October 2026, stage 4 is Marcos's), so naming it here would
-# send people to an address that does not answer. Point this at
-# https://gdpr.stormberry.as once that site is live, as CheckLink did.
-website: https://stormberry.as
+# The app's own site, live since 30 October 2026 (0.0.2 points the listing at it,
+# as CheckLink did once its site was live).
+website: https://gdpr.stormberry.as
 
 # The release text Zapstore shows for this version. Without this line zsp takes the
 # GitHub release body, which the workflow leaves to GitHub's generated notes. A plain
 # text file is used whole. Point it at the changelog of the versionCode being
-# released, and change the number at every release (0.0.1 is versionCode 1).
-release_notes: ./fastlane/metadata/android/en-US/changelogs/1.txt
+# released, and change the number at every release (0.0.2 is versionCode 2).
+release_notes: ./fastlane/metadata/android/en-US/changelogs/2.txt
 
 # The APK ships no raster icon (the launcher icon is an adaptive-icon XML built
 # from vectors), and a store front-end without a bitmap shows an empty tile. So

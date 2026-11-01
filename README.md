@@ -8,7 +8,7 @@ A functioning prototype from [Stormberry Labs](https://stormberry.as/labs.html).
 
 ## Status
 
-**0.0.1, the first release, 30 October 2026.** The web app is at [gdpr.stormberry.as](https://gdpr.stormberry.as); the Android app comes from this repository's releases page and from Zapstore (below).
+**0.0.2, 1 November 2026.** The web app is at [gdpr.stormberry.as](https://gdpr.stormberry.as); the Android app comes from this repository's releases page and from Zapstore (below). What each release changed is in `CHANGELOG.md`.
 
 ## What it does
 
@@ -51,7 +51,7 @@ From [Zapstore](https://zapstore.dev/apps/no.stormberry.gdprletterbuilder), or d
 ### Permissions: none
 
 ```bash
-aapt dump permissions gdprletterbuilder-v0.0.1.apk
+aapt dump permissions gdprletterbuilder-v0.0.2.apk
 ```
 
 prints one line, `package: no.stormberry.gdprletterbuilder`, and nothing else. There is no internet permission (the manifest removes it), so the app cannot send anything anywhere; links to other sites open in your own browser. There is no storage permission: files go out through Android's save screen. There is no calendar permission: Add to calendar app hands the event to your calendar app, which opens it for you to save or not. The clipboard is marked sensitive, the keyboard is asked not to learn from what you type, the fields are kept out of Android's autofill, and the app's data is left out of every backup. `android/expected-permissions.txt` holds that one line: every build fails if the merged manifest asks for any permission, and the release workflow fails if the APK's permissions are anything else. The app sends the page's Content Security Policy and `Referrer-Policy: no-referrer` with every file it serves to its web view. See `privacy.html`, "The Android app".
@@ -59,9 +59,9 @@ prints one line, `package: no.stormberry.gdprletterbuilder`, and nothing else. T
 ### Verify a release
 
 ```bash
-sha256sum -c gdprletterbuilder-v0.0.1.apk.sha256
-apksigner verify --print-certs gdprletterbuilder-v0.0.1.apk
-gh attestation verify gdprletterbuilder-v0.0.1.apk -R StormberryAS/GDPRLetterBuilder
+sha256sum -c gdprletterbuilder-v0.0.2.apk.sha256
+apksigner verify --print-certs gdprletterbuilder-v0.0.2.apk
+gh attestation verify gdprletterbuilder-v0.0.2.apk -R StormberryAS/GDPRLetterBuilder
 ```
 
 **Signing certificate SHA-256:** `8287710abd10fc1d37615299bd11c3e79306545ecc3e1b968010da54a80424e2` (RSA 4096). GDPRLetterBuilder has its own key (one key per app), and this certificate never changes.
@@ -72,7 +72,7 @@ The build is reproducible: the same commit gives the same APK, byte for byte (th
 
 ```bash
 git clone https://github.com/StormberryAS/GDPRLetterBuilder.git
-cd GDPRLetterBuilder && git checkout android-v0.0.1
+cd GDPRLetterBuilder && git checkout android-v0.0.2
 cd android && ./gradlew --no-daemon -PunsignedRelease=true :app:assembleRelease
 BT="$ANDROID_HOME/build-tools/36.0.0"
 "$BT/zipalign" -f 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
@@ -80,7 +80,7 @@ keytool -genkeypair -keystore mine.p12 -storetype PKCS12 -alias mine -keyalg RSA
 "$BT/apksigner" sign --ks mine.p12 --ks-key-alias mine \
   --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true --v4-signing-enabled false \
   --out mine.apk aligned.apk
-cd .. && node android/tools/apk-without-signature.ts android/mine.apk /path/to/gdprletterbuilder-v0.0.1.apk
+cd .. && node android/tools/apk-without-signature.ts android/mine.apk /path/to/gdprletterbuilder-v0.0.2.apk
 ```
 
 The two lines must show the same SHA-256. Use JDK 21, as the workflow does (Temurin 21), and a 4096-bit key as above, the size of the release key, so the signing block takes the same room.
@@ -118,6 +118,7 @@ The build refuses a release bundle without `-PplayBuild=true` or without a compl
 | Release tag | versionCode | Play versionName | Play versionCode |
 |-|-|-|-|
 | `android-v0.0.1` | 1 | 0.0.1 | 1001 |
+| `android-v0.0.2` | 2 | 0.0.2 | 1002 |
 
 ## Try it locally
 
@@ -140,7 +141,7 @@ Node 24, Python 3, Chromium and, for one suite, LibreWolf. The tests are TypeScr
 
 ## TypeScript
 
-The app is written in TypeScript (since 29 October 2026). The page's code is `ts/app.ts` and the pure modules `ts/src/*.ts`; the Android bridge script is `android/web-overlay/android-bridge.ts`. `tools/build-ts.sh` compiles them into the JavaScript the page and the app load, `app.js`, `src/*.js` and `android/web-overlay/android-bridge.js`, and then runs `bump_assets.py`:
+The app is written in TypeScript (since 29 October 2026). The page's code is `ts/app.ts`, the pure modules `ts/src/*.ts` and the first-run notice `ts/gate.ts`; the Android bridge script is `android/web-overlay/android-bridge.ts`. `tools/build-ts.sh` compiles them into the JavaScript the page and the app load, `app.js`, `src/*.js`, `gate.js` and `android/web-overlay/android-bridge.js`, and then runs `bump_assets.py`:
 
     npm ci --ignore-scripts
     tools/build-ts.sh                     # compile, then stamp
@@ -150,15 +151,16 @@ The compiled files are committed, because GitHub Pages publishes the repository 
 
 TypeScript 6.0.3 and `@types/node` 24.19.2 are the development dependencies, pinned with their integrity hashes (`package.json`, `package-lock.json`, `.npmrc`); the page itself has none. `ts/page.d.ts` types the page's elements by id, and `tests/static.test.ts` checks it against `index.html`. The TypeScript imports carry no stamp; `bump_assets.py` writes the `?v=` stamps into the compiled files. None of the TypeScript, tooling or compiler files is published (`_config.yml`) or bundled into the Android app, and `node_modules/` is ignored.
 
-The only other JavaScript in the repository is `gate.js`, the first-run notice: it is generated for every Labs app by `build-gates.py` at the root of the GitHub folder and is exempt, so it stays as that generator writes it (marked generated too). `tests/static.test.ts` fails on any other `.js`, `.mjs` or `.cjs`.
+`gate.js`, the first-run notice, is compiled from `ts/gate.ts` like the rest (since 0.0.2), and `ts/gate.ts` is written for every Labs app by `build-gates.py` at the root of the GitHub folder: edit that generator, run it with `--only GDPRLetterBuilder`, then run `tools/build-ts.sh`; never edit `ts/gate.ts` or `gate.js` here (both are marked generated). So every `.js` file in the repository is compiled from TypeScript, and `tests/static.test.ts` fails on any other `.js`, `.mjs` or `.cjs`.
 
 ## Files
 
 - `index.html`, `app.js`, `style.css`: the page. `app.js` only renders; it is compiled from `ts/app.ts`.
 - `src/`: pure modules, tested in Node, compiled from `ts/src/`. `letters.js` (the templates as data), `citations.js` (the verified list of citations and sources), `deadline.js` and `holidays-no.js`, `ics.js`, `mailto.js`, `personal-data.js`, `format.js`, `followups.js`, `timeline.js`.
-- `gate.js`, `gate.css`, `disclaimer.html`, `disclaimer.css`: generated by `build-gates.py` and `build-disclaimers.py` at the root of the GitHub folder. Do not edit them here.
+- `gate.css`, `disclaimer.html`, `disclaimer.css`: generated by `build-gates.py` and `build-disclaimers.py` at the root of the GitHub folder. `gate.js` is compiled from `ts/gate.ts`, which `build-gates.py` writes. Do not edit them here.
 - `DISCLAIMER.md`: the source of `disclaimer.html`; the section "Specific to GDPRLetterBuilder" is this app's own.
 - `privacy.html`: the privacy page, no scripts.
+- `CHANGELOG.md`: what each release changed; the store note of each release links to it.
 - `fonts/inter/`, `licences/Inter-OFL-1.1.txt`: the Inter typeface and its licence (see `NOTICE`).
 - `favicon.svg`, `apple-touch-icon.png`, `og-image.png`: the icon (ICON-1, draft C, the same drawing as the Android launcher icon), the Home Screen icon for iPhone and iPad (180 x 180, from the store icon) and the picture for link previews.
 - `switcher-icons/`: the Stormberry Labs carousel icons; `gdpr.svg` is a byte copy of `favicon.svg`.

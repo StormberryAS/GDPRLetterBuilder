@@ -1,6 +1,6 @@
 // What 0.0.1 adds around the app, checked statically (CheckLink's stage5-release.test.mjs, adapted):
-//   * the first-run notice (gate.js and gate.css from build-gates.py, dismissible tier) and its
-//     wiring;
+//   * the first-run notice (dismissible tier) and its wiring: gate.css from build-gates.py, and
+//     gate.js compiled by tools/build-ts.sh from ts/gate.ts, which build-gates.py writes (0.0.2);
 //   * DISCLAIMER.md, with disclaimer.html and disclaimer.css from build-disclaimers.py;
 //   * the generators' GDPRLetterBuilder output, pinned by hash, and regenerated and compared byte
 //     for byte when the generators are beside this repository (the GitHub folder);
@@ -33,14 +33,14 @@ function py(script: string, ...args: string[]): string {
 }
 const IMPORT = (path: string, name: string): string => `import importlib.util, sys\nspec = importlib.util.spec_from_file_location(${JSON.stringify(name)}, ${JSON.stringify(path)})\nm = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(m)\n`;
 
-// The notice's words as gate.js carries them, markup taken out.
-function gateWords() {
-  const js = read('gate.js');
+// The notice's words as a file carries them (gate.js, or its source ts/gate.ts), markup taken out.
+function gateWords(file = 'gate.js') {
+  const js = read(file);
   const unq = (s: string): string => s.replace(/\\'/g, "'").replace(/\\\\/g, '\\');
   const strip = (s: string): string => unq(s).replace(/<[^>]+>/g, '');
   return {
     title: strip(js.match(/<h2 class="sb-gate-title" id="' \+ TITLE_ID \+ '">(.*?)<\/h2>/)![1]!),
-    paragraphs: [...js.matchAll(/^ {4}'<p>(.*)<\/p>',$/gm)].map((m) => strip(m[1]!)),
+    paragraphs: [...js.matchAll(/^ +'<p>(.*)<\/p>',$/gm)].map((m) => strip(m[1]!)),
     ack: strip(js.match(/<p class="sb-gate-ack">(.*?)<\/p>/)![1]!),
     button: strip(js.match(/<button type="button" class="sb-gate-btn">(.*?)<\/button>/)![1]!),
     link: strip(js.match(/<a class="sb-gate-link" href="disclaimer\.html">(.*?)<\/a>/)![1]!),
@@ -52,15 +52,23 @@ function gateWords() {
 
 test('the first-run notice: GDPRLetterBuilder\'s, dismissible, version 2, its words pinned word for word', () => {
   const js = read('gate.js');
-  assert.match(js, /^\/\* =+\n {3}STORMBERRY FIRST-RUN GATE \(behaviour\)\n {3}GDPRLetterBuilder, dismissible tier\.\n\n {3}GENERATED FILE\./);
-  assert.match(js, /var APP_ID = 'gdprletterbuilder';\n  var VERSION = '2';\n  var MANDATORY = false;/);
+  // Compiled from ts/gate.ts (0.0.2): tsc's "use strict", then the one comment it keeps, the header.
+  const header = /^\/\*! STORMBERRY FIRST-RUN GATE \(behaviour\)\. GDPRLetterBuilder, dismissible tier\.\n {4}GENERATED FILE: build-gates\.py at the root of the GitHub folder writes this TypeScript;/;
+  assert.match(js, new RegExp('^"use strict";\\n' + header.source.slice(1)));
+  assert.match(read('ts/gate.ts'), header);
+  assert.match(js, /const APP_ID = 'gdprletterbuilder';\n {4}const VERSION = '2';\n {4}const MANDATORY = false;/);
+  // A classic script, as before: no module code, so the page's <script defer> runs it unchanged.
+  assert.ok(!/^\s*(import|export)\b/m.test(js), 'gate.js has an import or an export');
+  assert.equal([...js.matchAll(/\/\*/g)].length, 1, 'gate.js keeps only its header comment');
   assert.equal(GATE.key, 'sb-gate:gdprletterbuilder:v2');
-  const w = gateWords();
-  assert.deepEqual(w.paragraphs, GATE.paragraphs);
-  assert.equal(w.title, GATE.title);
-  assert.equal(w.ack, GATE.ack);
-  assert.equal(w.button, GATE.button);
-  assert.equal(w.link, GATE.link);
+  for (const file of ['gate.js', 'ts/gate.ts']) {
+    const w = gateWords(file);
+    assert.deepEqual(w.paragraphs, GATE.paragraphs, file);
+    assert.equal(w.title, GATE.title, file);
+    assert.equal(w.ack, GATE.ack, file);
+    assert.equal(w.button, GATE.button, file);
+    assert.equal(w.link, GATE.link, file);
+  }
   assert.match(js, /window\.localStorage\.setItem\(STORE_KEY, new Date\(\)\.toISOString\(\)\);/);
   assert.ok(!/fetch\(|XMLHttpRequest|sendBeacon|document\.cookie|eval\(|new Function|\.style\./.test(js));
   assert.deepEqual(copyProblems([GATE.title, ...GATE.paragraphs, GATE.ack].join('\n')), []);
@@ -121,7 +129,7 @@ test('DISCLAIMER.md: the shared framing, and GDPRLetterBuilder\'s own section (s
 // Pinned output of the shared generators for GDPRLetterBuilder, so a change to them shows up here
 // even where the generators are not at hand (a clone of the public repository).
 const PINNED = {
-  'gate.js': 'c2604ccb6e5ac524327af705cb49fce43131b2e2505fb50c33cd823e78655d78',
+  'gate.js': 'ab41511c8b7727b1791726599ed7bf2b2270e4978b31cff503a20bc1a3730336',
   'gate.css': '512ef19b8551096f1821f0edef5e241fb9c6dca3f85eead5994cbefe17f105df',
   'disclaimer.css': '14d0ec8be6482608350697244ba5e86255478a1d93170897015685f06697d159',
   'disclaimer.html': 'fa1845551e9fcf15dcc2caa9c40c6817d4bc28b9b5172c513b17ee4d10a3a17f',
@@ -147,10 +155,18 @@ test('disclaimer.html: rendered from DISCLAIMER.md, with its style sheet beside 
 });
 
 test('the generators, run here, write exactly the GDPRLetterBuilder files in this repository', { skip: !generators && 'build-gates.py and build-disclaimers.py are not beside this repository' }, () => {
-  const out = py(`${IMPORT(GATES_PY, 'gates')}app = [a for a in m.APPS if a["dir"] == "GDPRLetterBuilder"][0]\nsys.stdout.write(m.render_js(app) + "\\x00" + m.render_css(app))`);
-  const [js, css] = out.split('\0');
-  assert.equal(js, read('gate.js'));
+  // build-gates.py writes ts/gate.ts (tools/build-ts.sh compiles it to gate.js) and gate.css.
+  const out = py(`${IMPORT(GATES_PY, 'gates')}app = [a for a in m.APPS if a["dir"] == "GDPRLetterBuilder"][0]\nassert app["ts"] == "ts/gate.ts"\nsys.stdout.write(m.render_ts(app) + "\\x00" + m.render_css(app))`);
+  const [ts, css] = out.split('\0');
+  assert.equal(ts, read('ts/gate.ts'));
   assert.equal(css, read('gate.css'));
+  // One source, two paths: the generator's JavaScript path (its own tsc run, as for a JavaScript
+  // app) gives this repository's compiled gate.js byte for byte. It needs npm ci's TypeScript here.
+  if (existsSync(join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'))) {
+    const tsc = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
+    const js = py(`${IMPORT(GATES_PY, 'gates')}app = [a for a in m.APPS if a["dir"] == "GDPRLetterBuilder"][0]\nsys.stdout.write(m.render_js(app, sys.argv[1]))`, tsc);
+    assert.equal(js, read('gate.js'));
+  }
   const page = py(`${IMPORT(DISCLAIMERS_PY, 'disclaimers')}import os
 md = open(sys.argv[1], encoding="utf-8").read()
 assert m.NEW_WHAT in md
@@ -255,10 +271,14 @@ test('og-image.png is 1200 by 630, and the page names it for link previews', () 
   assert.match(read('index.html'), /<meta property="og:image" content="https:\/\/gdpr\.stormberry\.as\/og-image\.png" \/>/);
 });
 
-test('README.md: information, not legal advice; the 0.0.1 status and the pinned certificate', () => {
+test('README.md: information, not legal advice; the 0.0.2 status and the pinned certificate', () => {
   const md = read('README.md');
   assert.ok(md.startsWith('# GDPRLetterBuilder\n\n**Information, not legal advice.**'));
-  assert.match(md, /\*\*0\.0\.1, the first release, 30 October 2026\.\*\* The web app is at \[gdpr\.stormberry\.as\]\(https:\/\/gdpr\.stormberry\.as\)/);
+  // The status line and the CHANGELOG.md heading carry the same date (the signing day).
+  const status = md.match(/\*\*0\.0\.2, (\d{1,2} [A-Z][a-z]+ \d{4})\.\*\* The web app is at \[gdpr\.stormberry\.as\]\(https:\/\/gdpr\.stormberry\.as\)/);
+  assert.ok(status, 'the README status line');
+  assert.match(read('CHANGELOG.md'), new RegExp(`^## 0\\.0\\.2 \\(versionCode 2\\), ${status[1]}$`, 'm'));
+  assert.match(read('CHANGELOG.md'), /`8287710abd10fc1d37615299bd11c3e79306545ecc3e1b968010da54a80424e2`/);
   assert.match(md, /\*\*Signing certificate SHA-256:\*\* `8287710abd10fc1d37615299bd11c3e79306545ecc3e1b968010da54a80424e2`/);
   assert.ok(!/not created yet/i.test(md));
   // The Google Play edition (30 October 2026): named as a separate package, built from the same source.

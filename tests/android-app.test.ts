@@ -146,7 +146,7 @@ test('names, versions and the activity: GDPRLetterBuilder everywhere, as CheckLi
   assert.match(gradle, /namespace = "no\.stormberry\.gdprletterbuilder"/);
   // The sovereign package, or the Google Play edition's with -PplayBuild=true (tests/store.test.ts pins the switch).
   assert.match(gradle, /applicationId = if \(playBuild\) "no\.stormberry\.gdprletterbuilder\.play" else "no\.stormberry\.gdprletterbuilder"\n/);
-  assert.match(gradle, /versionCode = 1\s+versionName = "0\.0\.1"/);
+  assert.match(gradle, /versionCode = 2\s+versionName = "0\.0\.2"/);
   assert.match(gradle, /minSdk = 24\s+targetSdk = 36/);
   assert.match(gradle, /applicationIdSuffix = "\.debug"/);
   assert.match(read('android/gradle/libs.versions.toml'), /agp = "9\.3\.1"/);
