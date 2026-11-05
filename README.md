@@ -4,11 +4,13 @@
 
 It sends nothing. You read the letter, change what you need and send it yourself.
 
+Not an official service. Stormberry AS is a private company, and GDPRLetterBuilder does not represent any government entity or public authority (see Disclaimer below).
+
 A functioning prototype from [Stormberry Labs](https://stormberry.as/labs.html). Data about you comes with rights, and they are yours.
 
 ## Status
 
-**0.0.2, 1 November 2026.** The web app is at [gdpr.stormberry.as](https://gdpr.stormberry.as); the Android app comes from this repository's releases page and from Zapstore (below). What each release changed is in `CHANGELOG.md`.
+**0.0.3, 5 November 2026.** The web app is at [gdpr.stormberry.as](https://gdpr.stormberry.as); the Android app comes from this repository's releases page and from Zapstore (below). What each release changed is in `CHANGELOG.md`.
 
 ## What it does
 
@@ -51,7 +53,7 @@ From [Zapstore](https://zapstore.dev/apps/no.stormberry.gdprletterbuilder), or d
 ### Permissions: none
 
 ```bash
-aapt dump permissions gdprletterbuilder-v0.0.2.apk
+aapt dump permissions gdprletterbuilder-v0.0.3.apk
 ```
 
 prints one line, `package: no.stormberry.gdprletterbuilder`, and nothing else. There is no internet permission (the manifest removes it), so the app cannot send anything anywhere; links to other sites open in your own browser. There is no storage permission: files go out through Android's save screen. There is no calendar permission: Add to calendar app hands the event to your calendar app, which opens it for you to save or not. The clipboard is marked sensitive, the keyboard is asked not to learn from what you type, the fields are kept out of Android's autofill, and the app's data is left out of every backup. `android/expected-permissions.txt` holds that one line: every build fails if the merged manifest asks for any permission, and the release workflow fails if the APK's permissions are anything else. The app sends the page's Content Security Policy and `Referrer-Policy: no-referrer` with every file it serves to its web view. See `privacy.html`, "The Android app".
@@ -59,9 +61,9 @@ prints one line, `package: no.stormberry.gdprletterbuilder`, and nothing else. T
 ### Verify a release
 
 ```bash
-sha256sum -c gdprletterbuilder-v0.0.2.apk.sha256
-apksigner verify --print-certs gdprletterbuilder-v0.0.2.apk
-gh attestation verify gdprletterbuilder-v0.0.2.apk -R StormberryAS/GDPRLetterBuilder
+sha256sum -c gdprletterbuilder-v0.0.3.apk.sha256
+apksigner verify --print-certs gdprletterbuilder-v0.0.3.apk
+gh attestation verify gdprletterbuilder-v0.0.3.apk -R StormberryAS/GDPRLetterBuilder
 ```
 
 **Signing certificate SHA-256:** `8287710abd10fc1d37615299bd11c3e79306545ecc3e1b968010da54a80424e2` (RSA 4096). GDPRLetterBuilder has its own key (one key per app), and this certificate never changes.
@@ -72,7 +74,7 @@ The build is reproducible: the same commit gives the same APK, byte for byte (th
 
 ```bash
 git clone https://github.com/StormberryAS/GDPRLetterBuilder.git
-cd GDPRLetterBuilder && git checkout android-v0.0.2
+cd GDPRLetterBuilder && git checkout android-v0.0.3
 cd android && ./gradlew --no-daemon -PunsignedRelease=true :app:assembleRelease
 BT="$ANDROID_HOME/build-tools/36.0.0"
 "$BT/zipalign" -f 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
@@ -80,7 +82,7 @@ keytool -genkeypair -keystore mine.p12 -storetype PKCS12 -alias mine -keyalg RSA
 "$BT/apksigner" sign --ks mine.p12 --ks-key-alias mine \
   --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true --v4-signing-enabled false \
   --out mine.apk aligned.apk
-cd .. && node android/tools/apk-without-signature.ts android/mine.apk /path/to/gdprletterbuilder-v0.0.2.apk
+cd .. && node android/tools/apk-without-signature.ts android/mine.apk /path/to/gdprletterbuilder-v0.0.3.apk
 ```
 
 The two lines must show the same SHA-256. Use JDK 21, as the workflow does (Temurin 21), and a 4096-bit key as above, the size of the release key, so the signing block takes the same room.
@@ -119,6 +121,7 @@ The build refuses a release bundle without `-PplayBuild=true` or without a compl
 |-|-|-|-|
 | `android-v0.0.1` | 1 | 0.0.1 | 1001 |
 | `android-v0.0.2` | 2 | 0.0.2 | 1002 |
+| `android-v0.0.3` | 3 | 0.0.3 | 1003 |
 
 ## Try it locally
 
@@ -170,6 +173,8 @@ TypeScript 6.0.3 and `@types/node` 24.19.2 are the development dependencies, pin
 ## Disclaimer
 
 GDPRLetterBuilder gives information, not legal advice, and using it does not make Stormberry AS your lawyer or adviser. See `DISCLAIMER.md`, shown in the app as the Disclaimer page.
+
+It is not an official service. Stormberry AS is a private company and does not represent any government entity or public authority. It is not connected with the Norwegian Data Protection Authority (Datatilsynet), the European Data Protection Board (EDPB) or the European Union, and none of them has reviewed or approved it. The main screen says so under the title and links the official sources: the GDPR on EUR-Lex, the Personal Data Act in English on Lovdata, Datatilsynet and the EDPB's guidelines on the right of access. Step 11 lists every source with the date it was checked.
 
 ## Licence
 

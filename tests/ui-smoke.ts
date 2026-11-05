@@ -9,6 +9,9 @@
 // checks (spec sections 11 and 13):
 //   * the first-run notice at 1280, 390 and 320 pixels and at 200% text, word for word, closed by
 //     Escape, the backdrop and its button, its one flag, and not shown again after a reload;
+//   * the top of the main screen (0.0.3, the Google Play policy fix): the "Not an official service"
+//     box and the official sources row end above the fold at 320 x 568, 360 x 640 and 360 x 640 at
+//     130% text, in dark and light, in the order title, box, sources, introduction;
 //   * one column with no sideways scrolling at 1280, 390 and 320 pixels and at 200% text;
 //   * at 320, 360 and 393 pixels, every inline choice label on one line and no radio or checkbox
 //     label broken inside a word;
@@ -123,7 +126,7 @@ function contrast(sels: string[]) {
     return { sel, ratio: Math.round(r * 100) / 100, color: cs.color, bg: 'rgb(' + [bg.r, bg.g, bg.b].map(Math.round).join(',') + ')', size: cs.fontSize };
   });
 }
-const CONTRAST_SELECTORS = ['.hero-lede', '.hero-note', '.step-title', '.hint', '.field > label', 'legend', '.choice-sub', '.choice span', '.btn-primary', '.btn-secondary', 'textarea.letter',
+const CONTRAST_SELECTORS = ['.hero-lede', '.hero-note', '.hero-sources', '.hero-sources a', '.step-title', '.hint', '.field > label', 'legend', '.choice-sub', '.choice span', '.btn-primary', '.btn-secondary', 'textarea.letter',
   'details > summary', '.sources', '.missing', '.deadline p', '.deadline-head', '.footer-bottom p', '.footer-offline', '.footer-privacy', '.footer-law', '.footer-ai', '.footer-tagline', '.switcher-title', '.tips li', 'input#company'];
 
 try {
@@ -163,6 +166,34 @@ try {
       await p.load();
       g = await p.run(gateState);
       check('notice: not shown again after a reload', !g.open, g.open);
+    }
+  }
+
+  // The top of the main screen (0.0.3): Google Play asked for an easy-to-see statement in the app that
+  // it does not represent a government entity, and for the official sources. Both end above the fold,
+  // with the first-run notice closed, on the smallest phone screens and at 130% text (Android's large
+  // font), in dark and light. At 200% text nothing can fit; the box still comes first there.
+  for (const [w, h, zoom] of [[320, 568, 1], [360, 640, 1], [360, 640, 1.3], [320, 640, 2]] as Array<[number, number, number]>) {
+    for (const scheme of ['dark', 'light']) {
+      const p = await open({ width: w, height: h });
+      await p.s('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: scheme }] });
+      if (zoom !== 1) await p.run((z: number) => { document.documentElement.style.fontSize = (z * 100) + '%'; }, zoom);
+      await sleep(300);
+      const r = await p.run(() => {
+        scrollTo(0, 0);
+        const box = (s: string) => { const e = document.querySelector(s); if (!e || !e.getClientRects().length) return null; const b = e.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom) }; };
+        const shown = (s: string) => { const e = document.querySelector(s); if (!e) return false; const cs = getComputedStyle(e); return cs.visibility === 'visible' && cs.display !== 'none' && Number(cs.opacity) > 0.9; };
+        return { title: box('.hero-title'), note: box('.hero-note'), sources: box('.hero-sources'), lede: box('.hero-lede'), vh: innerHeight, scrollY, gate: !!document.querySelector('.sb-gate-overlay'),
+          shown: shown('.hero-note') && shown('.hero-sources'), noteText: document.querySelector('.hero-note')?.textContent, links: document.querySelectorAll('.hero-sources a[target="_blank"][rel="noopener noreferrer"]').length };
+      });
+      const tag = `top of the main screen ${w} x ${h}${zoom !== 1 ? ` at ${zoom * 100}% text` : ''}, ${scheme}`;
+      const ordered = !!(r.title && r.note && r.sources && r.lede) && r.title.bottom <= r.note.top && r.note.bottom <= r.sources.top && r.sources.bottom <= r.lede.top;
+      check(`${tag}: title, the "Not an official service" box, the four official sources, then the introduction`, ordered && r.shown && !r.gate && r.links === 4
+        && /^Not an official service\. Made by Stormberry AS, a private company\. It does not represent any government entity\./.test(r.noteText || ''), r);
+      if (zoom <= 1.3) check(`${tag}: the box and the sources row end above the fold, without a scroll`, r.scrollY === 0 && !!r.note && !!r.sources && r.note.bottom <= r.vh && r.sources.bottom <= r.vh, r);
+      else check(`${tag}: the box starts above the fold`, r.scrollY === 0 && !!r.note && r.note.top < r.vh, r);
+      await p.viewShot(join(SHOTS, `top-${w}x${h}${zoom !== 1 ? `-${zoom * 100}pct` : ''}-${scheme}.png`));
+      await p.close();
     }
   }
 

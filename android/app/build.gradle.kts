@@ -229,6 +229,11 @@ android {
         // 30 October 2026, with Save as PDF and Send using email app.
         // 0.0.2 (code 2, Play 1002): the first-run notice is compiled from TypeScript
         // (ts/gate.ts, written by build-gates.py); nothing the person sees or uses changes.
+        // 0.0.3 (code 3, Play 1003), 5 November 2026: the main screen says, under the title, that
+        // the app is not an official service and does not represent any government entity, and
+        // links the official sources (EUR-Lex, Lovdata, Datatilsynet, the EDPB); the store texts
+        // say the same. Google Play's Misleading Claims review of 1001 (2 November 2026) asked
+        // for both.
         //
         // ONE VISIBLE VERSION, TWO CODE LINES. The sovereign versionCode and versionName on the
         // next lines are the only numbers bumped by hand; Zapstore codes stay below 1000. The Play
@@ -236,8 +241,8 @@ android {
         // the sovereign one (0.0.1, code 1, becomes code 1001), its versionName the sovereign
         // one. Every Play upload is built from a sovereign release tag that shipped on GitHub
         // Releases.
-        versionCode = 2
-        versionName = "0.0.2"
+        versionCode = 3
+        versionName = "0.0.3"
         if (playBuild) {
             versionCode = PLAY_VERSION_CODE_OFFSET + versionCode!!
         }

@@ -271,13 +271,17 @@ test('og-image.png is 1200 by 630, and the page names it for link previews', () 
   assert.match(read('index.html'), /<meta property="og:image" content="https:\/\/gdpr\.stormberry\.as\/og-image\.png" \/>/);
 });
 
-test('README.md: information, not legal advice; the 0.0.2 status and the pinned certificate', () => {
+test('README.md: information, not legal advice; the 0.0.3 status and the pinned certificate', () => {
   const md = read('README.md');
   assert.ok(md.startsWith('# GDPRLetterBuilder\n\n**Information, not legal advice.**'));
-  // The status line and the CHANGELOG.md heading carry the same date (the signing day).
-  const status = md.match(/\*\*0\.0\.2, (\d{1,2} [A-Z][a-z]+ \d{4})\.\*\* The web app is at \[gdpr\.stormberry\.as\]\(https:\/\/gdpr\.stormberry\.as\)/);
+  // The status line, the CHANGELOG.md heading and the Gradle history line carry the same date (the signing day).
+  const status = md.match(/\*\*0\.0\.3, (\d{1,2} [A-Z][a-z]+ \d{4})\.\*\* The web app is at \[gdpr\.stormberry\.as\]\(https:\/\/gdpr\.stormberry\.as\)/);
   assert.ok(status, 'the README status line');
-  assert.match(read('CHANGELOG.md'), new RegExp(`^## 0\\.0\\.2 \\(versionCode 2\\), ${status[1]}$`, 'm'));
+  assert.match(read('CHANGELOG.md'), new RegExp(`^## 0\\.0\\.3 \\(versionCode 3\\), ${status[1]}$`, 'm'));
+  assert.match(read('android/app/build.gradle.kts'), new RegExp(`^ {8}// 0\\.0\\.3 \\(code 3, Play 1003\\), ${status[1]}: `, 'm'));
+  // Not an official service (0.0.3), at the top and in the Disclaimer section.
+  assert.ok(md.includes('\n\nNot an official service. Stormberry AS is a private company, and GDPRLetterBuilder does not represent any government entity or public authority'));
+  assert.ok(md.includes('It is not an official service. Stormberry AS is a private company and does not represent any government entity or public authority.'));
   assert.match(read('CHANGELOG.md'), /`8287710abd10fc1d37615299bd11c3e79306545ecc3e1b968010da54a80424e2`/);
   assert.match(md, /\*\*Signing certificate SHA-256:\*\* `8287710abd10fc1d37615299bd11c3e79306545ecc3e1b968010da54a80424e2`/);
   assert.ok(!/not created yet/i.test(md));

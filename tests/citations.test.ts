@@ -53,10 +53,25 @@ test('the disclaimer, the privacy page and the README cite only what is on the l
   assert.deepEqual(unknownCitations(read('README.md')), []);
 });
 
+// The official sources under the title (0.0.3, the Google Play policy fix) link three entry points
+// that no letter or guide cites: the Personal Data Act in Lovdata's English translation, Datatilsynet's
+// website in English and the EDPB guidelines' own page. They are not citations, so they are not on the
+// list of src/citations.js (the app's code does not change in 0.0.3); they are allowed here, each one
+// in the hero and in step 11 and nowhere else.
+const ENTRY_POINTS = [
+  'https://lovdata.no/dokument/NLE/lov/2018-06-15-38',
+  'https://www.datatilsynet.no/en/',
+  'https://www.edpb.europa.eu/our-work-tools/our-documents/guidelines/guidelines-012022-data-subject-rights-right-access_en',
+];
+
 test('every source link on the page goes to an address on the list', () => {
   const html = read('index.html');
   const main = html.slice(html.indexOf('<!-- APP-UI:START -->'), html.indexOf('<!-- APP-UI:END -->'));
-  const known = new Set(Object.values(SOURCES).map((s) => s.url));
+  const known = new Set([...Object.values(SOURCES).map((s) => s.url), ...ENTRY_POINTS]);
+  for (const u of ENTRY_POINTS) {
+    assert.ok(!Object.values(SOURCES).some((s) => s.url === u), `${u} is on the list now: take it out of ENTRY_POINTS`);
+    assert.equal([...main.matchAll(new RegExp(`href="${u.replace(/[.?/]/g, '\\$&')}"`, 'g'))].length, 2, `${u}: once in the hero, once in step 11`);
+  }
   const hrefs = [...main.matchAll(/<a [^>]*href="(https:[^"]+)"/g)].map((m) => m[1]);
   assert.ok(hrefs.length > 40);
   for (const h of hrefs) assert.ok(known.has(h!), h);

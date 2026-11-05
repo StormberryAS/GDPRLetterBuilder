@@ -80,6 +80,9 @@ test('the lint catches what it should (so a pass means something)', () => {
   assert.equal(copyProblems('Done!').length, 1);
   assert.equal(copyProblems('the color and the center').length, 2);
   assert.equal(copyProblems('We guarantee a safe, official, legally binding letter').length >= 1, true);
+  // "official" only where it says the opposite (0.0.3): not an official service, unofficial, the official sources.
+  assert.deepEqual(copyProblems('Not an official service. An unofficial helper. Official sources: EUR-Lex. Read the official sources. It is not an official\nservice, see the official\nsources.'), []);
+  for (const claim of ['An official letter.', 'Officially reviewed.', 'The official GDPR service.', 'It is an official source.', 'Official service.', 'It is not an official letter.', 'Not an official form.']) assert.equal(copyProblems(claim).length, 1, claim);
   assert.equal(copyProblems('They are late and the company has broken the law. You are entitled to it.').length, 3);
   assert.deepEqual(copyProblems('It does not tell you whether a company has broken the law.'), []);
   assert.deepEqual(copyProblems('colour, organise, licence, the safeguards that apply, grey, centre'), []);
@@ -89,7 +92,9 @@ test('the lint catches what it should (so a pass means something)', () => {
 test('the page says "information, not legal advice" where the spec puts it, and "Save", never "Download"', () => {
   const html = read('index.html');
   const text = htmlText(html);
-  assert.ok(text.includes('Information, not legal advice. This page sends nothing: you send the letter yourself.'));
+  // Under the title since 0.0.3 (the Google Play policy fix): not an official service, then the official sources.
+  assert.ok(text.includes('Not an official service. Made by Stormberry AS, a private company. It does not represent any government entity. Information, not legal advice; it sends nothing.'));
+  assert.ok(text.includes('Stormberry AS is a private company and does not represent any government entity or public authority. It is not connected with Datatilsynet, the EDPB or the European Union, and none of them has reviewed or approved this page.'));
   assert.ok(text.includes('A standard letter. Read it, change anything that is not right, and send it yourself.'));
   assert.ok(text.includes('The letters are fixed texts checked against the sources listed below. Nothing is written by AI while you use this page.'));
   assert.ok(text.includes('Nothing you type is sent anywhere by this page. Disconnect and try it.'));

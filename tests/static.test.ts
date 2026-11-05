@@ -228,7 +228,7 @@ const MANIFEST = [
   '.github/workflows/android-release.yml', 'android/tools/apk-without-signature.ts', 'android/tools/build-store-icon.py', 'tests/store.test.ts',
   'zapstore.yaml', 'fastlane/metadata/android/en-US/title.txt', 'fastlane/metadata/android/en-US/short_description.txt',
   'fastlane/metadata/android/en-US/full_description.txt', 'fastlane/metadata/android/en-US/changelogs/1.txt',
-  'fastlane/metadata/android/en-US/changelogs/2.txt',
+  'fastlane/metadata/android/en-US/changelogs/2.txt', 'fastlane/metadata/android/en-US/changelogs/3.txt',
   'fastlane/metadata/android/en-US/images/icon.png', 'fastlane/metadata/android/en-US/images/featureGraphic.png',
   'fastlane/metadata/android/en-US/images/phoneScreenshots/01-start.png', 'fastlane/metadata/android/en-US/images/phoneScreenshots/02-your-letter.png',
   'fastlane/metadata/android/en-US/images/phoneScreenshots/03-deadline.png', 'fastlane/metadata/android/en-US/images/phoneScreenshots/04-follow-up.png',
@@ -266,6 +266,39 @@ test('touch targets and the title at large text (stage 3 review E3-8, E3-9)', ()
   assert.match(css, /\.choices\.inline \.choice > span \{ flex: 1 1 0; max-width: none; \}/);
   // The title breaks between its three words, never inside one while they fit.
   assert.match(read('index.html'), /<h1 class="hero-title" id="app-title"><span aria-hidden="true">GDPR<wbr>Letter<wbr>Builder<\/span><span class="visually-hidden">GDPR Letter Builder<\/span><\/h1>/);
+});
+
+// The Google Play policy fix (0.0.3, approved by Marcos on 4 November 2026, after Google's Misleading
+// Claims review of 1001 on 2 November 2026): under the title, a box says the app is not an official
+// service, and a row links four official sources, each also in step 11; the introduction follows them.
+const HERO_SOURCES: Array<[string, string]> = [
+  ['https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679', 'GDPR (EUR-Lex)'],
+  ['https://lovdata.no/dokument/NLE/lov/2018-06-15-38', 'Personal Data Act (Lovdata)'],
+  ['https://www.datatilsynet.no/en/', 'Datatilsynet'],
+  ['https://www.edpb.europa.eu/our-work-tools/our-documents/guidelines/guidelines-012022-data-subject-rights-right-access_en', 'EDPB'],
+];
+
+test('the main screen says first that this is not an official service, then links the official sources (0.0.3)', () => {
+  const html = read('index.html');
+  const at = html.indexOf('<section class="hero" aria-labelledby="app-title">');
+  const hero = html.slice(at, html.indexOf('</section>', at));
+  const links = HERO_SOURCES.map(([u, t]) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`);
+  const want = '<h1 class="hero-title" id="app-title"><span aria-hidden="true">GDPR<wbr>Letter<wbr>Builder</span><span class="visually-hidden">GDPR Letter Builder</span></h1>\n' +
+    '      <p class="hero-note"><strong>Not an official service.</strong> Made by Stormberry AS, a private company. It does not represent any government entity. Information, not legal advice; it sends nothing.</p>\n' +
+    `      <p class="hero-sources">Official sources: ${links.join(', ')}. All of them: step 11.</p>\n` +
+    '      <p class="hero-lede">';
+  assert.ok(hero.includes(want), 'the title, the box, the sources row, then the introduction');
+  // The hero holds these four links and no other; the page has one box.
+  assert.equal([...hero.matchAll(/<a\b/g)].length, 4);
+  assert.equal([...html.matchAll(/class="hero-note"/g)].length, 1);
+  assert.equal([...html.matchAll(/class="hero-sources"/g)].length, 1);
+  // Each one is also in step 11, the full list, with the same target and rel.
+  const s11 = html.slice(html.indexOf('<!-- Step 11 -->'), html.indexOf('<div class="visually-hidden" id="announcer"'));
+  for (const [u] of HERO_SOURCES) assert.ok(s11.includes(`<a href="${u}" target="_blank" rel="noopener noreferrer">`), `step 11 lacks ${u}`);
+  // Step 11 ends with the same statement.
+  assert.ok(s11.includes('<p class="hint">Stormberry AS is a private company and does not represent any government entity or public authority. It is not connected with Datatilsynet, the EDPB or the European Union, and none of them has reviewed or approved this page.'));
+  // The row's style: the lede's width, smaller and quieter than the box.
+  assert.match(read('style.css'), /\n\.hero-sources \{\n {2}max-width: 36rem;\n {2}color: var\(--text-secondary\);\n {2}font-size: 0\.9rem;\n {2}line-height: 1\.5;\n\}\n/);
 });
 
 test('the manifest of files: the repository holds exactly the expected files', () => {

@@ -42,6 +42,9 @@
 //     1.5 and 2.0, at 320 and 412 px: the notice, the letter page with a detail and a timeline row,
 //     the privacy page and the disclaimer; the text grows, nothing reaches past the screen, every
 //     date shows whole and the rows hold their fields and buttons (17 October 2026);
+//   * the top of the main screen in the app (0.0.3, the Google Play policy fix): the "Not an
+//     official service" box and the official sources row end above the fold at 320 x 568, 360 x 640
+//     and 360 x 640 with the app's text at 1.3, in dark and light;
 //   * the same files without the bridge (a WebView too old for it) and the website itself show
 //     none of the app's parts.
 // Nothing leaves the machine: the browser can reach only this server.
@@ -646,6 +649,33 @@ try {
           if (width === 320 && scale === 2) await s.viewShot(join(SHOTS, `large-text-${side}-320-2.0.png`));
           await s.close();
         }
+      }
+    }
+
+    // The top of the main screen in the app (0.0.3): Google Play asked for an easy-to-see statement
+    // in the app that it does not represent a government entity, and for the official sources. Both
+    // end above the fold with the notice closed, on the smallest phone screens and with the app's
+    // text at 1.3 (textZoom, as above), in dark and light.
+    for (const [w, h, scale] of [[320, 568, 1], [360, 640, 1], [360, 640, 1.3]] as Array<[number, number, number]>) {
+      for (const scheme of ['dark', 'light']) {
+        const p = await open('app', { width: w, height: h });
+        await p.s('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: scheme }] });
+        if (scale !== 1) await p.run(textZoom, scale);
+        await sleep(300);
+        const r = await p.run(() => {
+          scrollTo(0, 0);
+          const box = (s: string) => { const e = document.querySelector(s); if (!e || !e.getClientRects().length) return null; const b = e.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom) }; };
+          return { title: box('.hero-title'), note: box('.hero-note'), sources: box('.hero-sources'), lede: box('.hero-lede'), vh: innerHeight, scrollY, gate: !!document.querySelector('.sb-gate-overlay'),
+            bridge: !!document.querySelector('script[src="android-bridge.js"]'), body: parseFloat(getComputedStyle(document.body).fontSize),
+            noteText: document.querySelector('.hero-note')?.textContent, links: document.querySelectorAll('.hero-sources a[target="_blank"][rel="noopener noreferrer"]').length };
+        });
+        const tag = `top of the main screen in the app, ${w} x ${h}${scale !== 1 ? `, the app's text at ${scale}` : ''}, ${scheme}`;
+        const ordered = !!(r.title && r.note && r.sources && r.lede) && r.title.bottom <= r.note.top && r.note.bottom <= r.sources.top && r.sources.bottom <= r.lede.top;
+        check(`${tag}: title, the "Not an official service" box, the four official sources, then the introduction; both end above the fold`,
+          r.bridge && !r.gate && ordered && r.links === 4 && Math.abs(r.body - 16 * scale) < 0.1 && /^Not an official service\. Made by Stormberry AS, a private company\. It does not represent any government entity\./.test(r.noteText || '')
+          && r.scrollY === 0 && r.note!.bottom <= r.vh && r.sources!.bottom <= r.vh, r);
+        await p.viewShot(join(SHOTS, `app-top-${w}x${h}${scale !== 1 ? `-${scale}` : ''}-${scheme}.png`));
+        await p.close();
       }
     }
   }

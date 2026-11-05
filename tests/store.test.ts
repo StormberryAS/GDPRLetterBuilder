@@ -94,10 +94,39 @@ test('the store texts: Zapstore\'s and Fastlane\'s lengths, the copy rules, and 
     assert.deepEqual(copyProblems(t), [], name);
     assert.ok(!/\bvibe/i.test(t), name);
   }
-  // The framing every Labs app carries, and the app's own.
-  assert.match(full, /This is a functioning prototype from Stormberry AS, MIT licensed/);
-  assert.match(full, /Information, not legal advice\./);
+  // The framing every Labs app carries, and the app's own. Since 0.0.3 the last two lines are the Play
+  // edition's, word for word: the licence is named with the code's address, not in the prototype line.
+  assert.match(full, /\n\nThe privacy page and the full disclaimer open from the app's footer\. The code is open source \(MIT\): https:\/\/github\.com\/StormberryAS\/GDPRLetterBuilder\n\nThis is a functioning prototype from Stormberry AS, so expect gaps and changes\.\n$/);
+  assert.match(full, /It gives information, not legal advice\./);
   assert.match(note, /Information, not legal advice\./);
+});
+
+// Google Play's Misleading Claims review of 1001 (2 November 2026): the description must say near the top
+// that the app is not official and does not represent a government entity, and link the official sources.
+// Marcos approved the texts on 4 November 2026 (~/work/gdpr-play-policy-20261104/DESIGN.md).
+const NOT_OFFICIAL = 'Not an official service. GDPRLetterBuilder is a free app made by Stormberry AS, a private company in Norway. It does not represent any government entity or public authority. It is not connected with the Norwegian Data Protection Authority (Datatilsynet), the European Data Protection Board (EDPB) or the European Union, and none of them has reviewed or approved it. It gives information, not legal advice.';
+const OFFICIAL_SOURCES = [
+  'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679',
+  'https://lovdata.no/dokument/NLE/lov/2018-06-15-38',
+  'https://www.datatilsynet.no/en/',
+  'https://www.datatilsynet.no/om-datatilsynet/kontakt-oss/klage-til-datatilsynet/',
+  'https://www.edpb.europa.eu/our-work-tools/our-documents/guidelines/guidelines-012022-data-subject-rights-right-access_en',
+];
+
+test('the store texts say first that the app is not official, and link the official sources, each one also in step 11 (0.0.3)', () => {
+  const full = text(`${FL}/full_description.txt`);
+  assert.ok(full.startsWith(NOT_OFFICIAL + '\n\n'), 'the first paragraph');
+  assert.equal(text(`${FL}/short_description.txt`), 'Unofficial helper: write a GDPR access or erasure letter. Sends nothing.');
+  const block = full.match(/\n\nOfficial sources\. The letters and notes rely on these\. For the authoritative text, read them there:\n((?:- [^\n]+: https:\/\/\S+\n){5})The app lists every source it uses, with the date we checked it, in its last step\.\n\n/);
+  assert.ok(block, 'the Official sources block');
+  assert.deepEqual([...block[1]!.matchAll(/: (https:\/\/\S+)\n/g)].map((m) => m[1]), OFFICIAL_SOURCES);
+  // Every link of the store text is a link of step 11, which lists them all, and opens safely there.
+  const html = read('index.html');
+  const s11 = html.slice(html.indexOf('<!-- Step 11 -->'), html.indexOf('<div class="visually-hidden" id="announcer"'));
+  for (const u of OFFICIAL_SOURCES) assert.ok(s11.includes(`<a href="${u}" target="_blank" rel="noopener noreferrer">`), u);
+  // The list item it replaced is gone; the deadline item uses the short name the first paragraph defines.
+  assert.ok(!full.includes('Every source the letters rely on'));
+  assert.ok(full.includes('counted the way the EDPB describes'));
 });
 
 test('the texts are approved (30 October 2026): no DRAFT line anywhere, and the release workflow still refuses to build with one', () => {
@@ -113,7 +142,7 @@ test('the texts are approved (30 October 2026): no DRAFT line anywhere, and the 
 
 test('the store texts claim no permission only while the APK asks for none', () => {
   const full = text(`${FL}/full_description.txt`);
-  const claims = /asks for no Android permission at all/.test(full) && /The only line you should see is the package name\./.test(full);
+  const claims = /asks for no Android permission at all/.test(full) && /Android's App info for GDPRLetterBuilder lists none\./.test(full);
   assert.ok(claims);
   assert.equal(read('android/expected-permissions.txt').trim(), 'package: no.stormberry.gdprletterbuilder');
   const manifest = read('android/app/src/main/AndroidManifest.xml').replace(/<!--[\s\S]*?-->/g, '');
@@ -231,11 +260,11 @@ test('the Play switch: -PplayBuild=true builds no.stormberry.gdprletterbuilder.p
   assert.ok(versionCode() < 1000, 'the sovereign versionCode stays below the Play offset');
   assert.match(gradle, /^val PLAY_VERSION_CODE_OFFSET = 1000$/m);
   assert.match(gradle, /applicationId = if \(playBuild\) "no\.stormberry\.gdprletterbuilder\.play" else "no\.stormberry\.gdprletterbuilder"/);
-  assert.match(gradle, /versionCode = 2\n {8}versionName = "0\.0\.2"\n {8}if \(playBuild\) \{\n {12}versionCode = PLAY_VERSION_CODE_OFFSET \+ versionCode!!\n {8}\}/);
+  assert.match(gradle, /versionCode = 3\n {8}versionName = "0\.0\.3"\n {8}if \(playBuild\) \{\n {12}versionCode = PLAY_VERSION_CODE_OFFSET \+ versionCode!!\n {8}\}/);
   // Strict parsing: a bare -PplayBuild means Play, anything unknown stops the build.
   assert.match(gradle, /"", "true", "1", "yes" -> true\n\s*"false", "0", "no" -> false\n\s*else -> error\(/);
   assert.match(gradle, /if \(playBuild\) \{\n {4}base \{ archivesName = "gdprletterbuilder-play" \}\n\}/);
-  assert.match(read('README.md'), /\| `android-v0\.0\.1` \| 1 \| 0\.0\.1 \| 1001 \|\n\| `android-v0\.0\.2` \| 2 \| 0\.0\.2 \| 1002 \|\n/);
+  assert.match(read('README.md'), /\| `android-v0\.0\.1` \| 1 \| 0\.0\.1 \| 1001 \|\n\| `android-v0\.0\.2` \| 2 \| 0\.0\.2 \| 1002 \|\n\| `android-v0\.0\.3` \| 3 \| 0\.0\.3 \| 1003 \|\n/);
   // The Play edition has the same features: nothing in the app's code or manifest depends on the switch.
   for (const f of walkFiles('android/app/src/main')) assert.ok(!/playBuild|\.play\b/.test(read(f)), `${f} depends on the Play switch`);
 });

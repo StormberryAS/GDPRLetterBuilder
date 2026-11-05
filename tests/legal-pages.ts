@@ -100,7 +100,10 @@ export function htmlText(html: string): string {
 //   * no em or en dashes, no double hyphen, no exclamation mark;
 //   * British spelling;
 //   * no claims the app cannot back: guarantee, legally binding, lawyer-approved, official, approved
-//     by Datatilsynet, safe;
+//     by Datatilsynet, safe. Two uses of "official" say the opposite and are allowed (0.0.3, the
+//     Google Play policy fix): "not an official service" (and "unofficial"), and "official
+//     sources", the government sources the page links. "Not an official" before any word but
+//     "service" ("not an official letter") is still flagged;
 //   * no verdict the app cannot make: they are late, broke the law, has broken the law (except where
 //     the text says the app does NOT say so: "whether a company has broken the law"), you are
 //     entitled to.
@@ -116,7 +119,7 @@ export function copyProblems(text: string): string[] {
   scan('dash', /\u2014|\u2013|--/g);
   scan('exclamation', /!/g);
   scan('spelling', /\b(color\w*|organiz\w*|recogniz\w*|realiz\w*|minimiz\w*|authoriz\w*|prioritiz\w*|customiz\w*|analyz\w*|apologiz\w*|emphasiz\w*|standardiz\w*|specializ\w*|summariz\w*|utiliz\w*|maximiz\w*|optimiz\w*|gray|center(ed|s)?|favorite\w*|behavior\w*|catalog|licens(e|ed) (?:text|file))\b/gi);
-  scan('claim', /\b(guarantee[ds]?|legally binding|lawyer-approved|official(ly)?|approved by Datatilsynet|safe(ly)?)\b/gi);
+  scan('claim', /\b(guarantee[ds]?|legally binding|lawyer-approved|officially|(?<!\bnot\s+an\s+)official(?!\s+sources\b)|(?<=\bnot\s+an\s+)official(?!\s+service\b)|approved by Datatilsynet|safe(ly)?)\b/gi);
   scan('verdict', /(?<!whether a company )\bhas broken the law|\bbroke the law|\bthey are late|\byou are entitled to/gi);
   return out;
 }

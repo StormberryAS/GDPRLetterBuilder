@@ -145,11 +145,17 @@ class NavigationPolicyTest {
         assertTrue(NavigationPolicy.APP_SCHEMES == setOf("mailto", "nostr"))
     }
 
-    /** The source links of the page (they open in a new tab on the website) go to the browser. */
+    /**
+     * The source links of the page (they open in a new tab on the website) go to the browser, the
+     * four official sources under the title (0.0.3) among them.
+     */
     @Test fun theSourceLinksGoToTheBrowser() {
         listOf(
             "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679",
             "https://lovdata.no/dokument/NL/lov/2018-06-15-38",
+            "https://lovdata.no/dokument/NLE/lov/2018-06-15-38",
+            "https://www.datatilsynet.no/en/",
+            "https://www.edpb.europa.eu/our-work-tools/our-documents/guidelines/guidelines-012022-data-subject-rights-right-access_en",
             "https://curia.europa.eu/juris/liste.jsf?num=C-154/21",
             "https://www.edpb.europa.eu/system/files/documents/2023-04/edpb_guidelines_202201_data_subject_rights_access_v2_en.pdf",
             "https://www.datatilsynet.no/om-datatilsynet/kontakt-oss/klage-til-datatilsynet/",

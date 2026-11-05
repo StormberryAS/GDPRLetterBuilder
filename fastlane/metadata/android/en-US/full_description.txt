@@ -1,25 +1,28 @@
-GDPRLetterBuilder fills in a letter asking a company to show you the personal data it holds about you (an access request, GDPR Article 15) or to erase it (an erasure request, GDPR Article 17), in English or in Norwegian (Bokmål). It counts the company's deadline, hands a reminder to your own calendar, and explains what you can do if they do not answer, or not fully, including how to complain to the Norwegian Data Protection Authority (Datatilsynet).
+Not an official service. GDPRLetterBuilder is a free app made by Stormberry AS, a private company in Norway. It does not represent any government entity or public authority. It is not connected with the Norwegian Data Protection Authority (Datatilsynet), the European Data Protection Board (EDPB) or the European Union, and none of them has reviewed or approved it. It gives information, not legal advice.
 
-Information, not legal advice. It sends nothing: you read the letter, change what you need and send it yourself.
+GDPRLetterBuilder fills in a letter asking a company to show you the personal data it holds about you (an access request, GDPR Article 15) or to erase it (an erasure request, GDPR Article 17), in English or in Norwegian (Bokmål). It counts the company's deadline, hands a reminder to your own calendar, and explains what you can do if they do not answer, or not fully, including how to complain to Datatilsynet.
+
+It sends nothing: you read the letter, change what you need and send it yourself.
+
+Official sources. The letters and notes rely on these. For the authoritative text, read them there:
+- The General Data Protection Regulation (GDPR), Regulation (EU) 2016/679, on EUR-Lex: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679
+- The Norwegian Personal Data Act (personopplysningsloven), which makes the GDPR Norwegian law, in English on Lovdata: https://lovdata.no/dokument/NLE/lov/2018-06-15-38
+- Datatilsynet: https://www.datatilsynet.no/en/
+- Datatilsynet on complaints (in Norwegian): https://www.datatilsynet.no/om-datatilsynet/kontakt-oss/klage-til-datatilsynet/
+- EDPB Guidelines 01/2022 on the right of access: https://www.edpb.europa.eu/our-work-tools/our-documents/guidelines/guidelines-012022-data-subject-rights-right-access_en
+The app lists every source it uses, with the date we checked it, in its last step.
 
 - What do you want? See what they hold, or have it deleted.
 - Who you are writing to, and about you. The company, how you will send it, and your own details. A warning shows if you type something that looks like a Norwegian national identity number or a payment card number. It warns and never blocks.
 - Your letter, live, in English or Bokmål. You can edit it before you send it.
 - Send it yourself. Copy it, open a draft in your email app, print it or save it as a PDF, save it as a text file, or share it.
-- Remember the deadline. One month from receipt, counted the way the European Data Protection Board describes, with weekends and Norwegian public holidays rolled over. Save a reminder file, or press Add to calendar app to hand the reminder to your calendar app. It holds the deadline and, unless you leave it out, the company's name; never your details.
+- Remember the deadline. One month from receipt, counted the way the EDPB describes, with weekends and Norwegian public holidays rolled over. Save a reminder file, or press Add to calendar app to hand the reminder to your calendar app. It holds the deadline and, unless you leave it out, the company's name; never your details.
 - If they do not answer, or not fully: what the law says, a follow-up letter, and a cover note with a dated timeline for a complaint to Datatilsynet.
-- Every source the letters rely on, and the date they were checked.
 
-No permissions and no internet access. The app asks for no Android permission at all, so it cannot send anything anywhere. Your letter leaves only when you press a button: to the clipboard, your email app, the printer, Android's save screen or the app you share it with. Check it yourself before installing:
-
-    aapt dump permissions <the APK you downloaded>
-
-The only line you should see is the package name.
+No permissions and no internet access. The app asks for no Android permission at all, so it cannot send anything anywhere: Android's App info for GDPRLetterBuilder lists none. Your letter leaves only when you press a button: to the clipboard, your email app, the printer, Android's save screen or the app you share it with.
 
 It keeps nothing you type, and no history of letters or companies. Closing the app empties every field. The only thing it stores is that you closed the first-run notice.
 
-The app runs GDPRLetterBuilder's web page from inside the APK, offline. The build checks that every bundled file is byte for byte the one in the source repository, apart from one added line in index.html for the bridge to Android. The app is in English; the letters are in English and Bokmål.
+The privacy page and the full disclaimer open from the app's footer. The code is open source (MIT): https://github.com/StormberryAS/GDPRLetterBuilder
 
-The privacy page and the full disclaimer open from the app's footer.
-
-This is a functioning prototype from Stormberry AS, MIT licensed, so expect gaps and changes.
+This is a functioning prototype from Stormberry AS, so expect gaps and changes.

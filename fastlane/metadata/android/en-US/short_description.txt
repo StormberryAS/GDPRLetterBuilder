@@ -1,1 +1,1 @@
-A GDPR letter asking a company for your data, or to erase it. Sends nothing.
+Unofficial helper: write a GDPR access or erasure letter. Sends nothing.
