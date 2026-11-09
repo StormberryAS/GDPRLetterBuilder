@@ -132,7 +132,7 @@ const PINNED = {
   'gate.js': 'ab41511c8b7727b1791726599ed7bf2b2270e4978b31cff503a20bc1a3730336',
   'gate.css': '512ef19b8551096f1821f0edef5e241fb9c6dca3f85eead5994cbefe17f105df',
   'disclaimer.css': '14d0ec8be6482608350697244ba5e86255478a1d93170897015685f06697d159',
-  'disclaimer.html': 'fa1845551e9fcf15dcc2caa9c40c6817d4bc28b9b5172c513b17ee4d10a3a17f',
+  'disclaimer.html': 'b16ab43d4a8b243bc2eb6c6a247a735a3d75a3ab9eaa31b1f7453dfc448464d1',
 };
 
 test('the generators\' GDPRLetterBuilder output is pinned by hash', () => {
